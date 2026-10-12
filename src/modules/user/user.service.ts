@@ -12,12 +12,15 @@ import { FileManagerService } from '../../services/file-manager/file-manager.ser
 import { AccountType } from './dto/create-user.dto';
 import { ZohoInventoryService } from '../zoho/zoho-inventory.service';
 import { ZohoPayloadGenerator } from '../zoho/dto/user-generator';
+import axios from 'axios';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class UserService {
   constructor(
     private readonly fileManagerService: FileManagerService,
     private readonly zohoInventoryService: ZohoInventoryService,
+    private readonly configService: ConfigService,
     @InjectRepository(User) private readonly userRepository: Repository<User>,
   ) {}
 
@@ -159,6 +162,30 @@ export class UserService {
     return result;
   }
 
+  async validateEmail(email: string) {
+    const api_key = this.configService.get<string>('EMAILABLE_API_KEY');
+    const { data: response } = await axios.get(
+      'https://api.emailable.com/v1/verify',
+      {
+        params: { email, api_key },
+      },
+    );
+
+    const isValid = response.state === 'deliverable' && !response.disposable;
+
+    if (!isValid) {
+      if (response.disposable) {
+        throw new BadRequestException(
+          'Disposable / temporary emails are not permitted.',
+        );
+      } else if (response.state === 'undeliverable') {
+        throw new BadRequestException('This email address does not exist.');
+      } else {
+        return new BadRequestException('Kindly enter a valid email address!');
+      }
+    }
+  }
+
   async checkDuplicateField(field: string, value: any) {
     if (!value) {
       return { is_available: true };
@@ -166,6 +193,9 @@ export class UserService {
 
     const processedValue = typeof value === 'string' ? value.trim() : value;
     const queryBuilder = this.userRepository.createQueryBuilder('user');
+    if (field === 'email') {
+      await this.validateEmail(processedValue);
+    }
 
     if (field.includes('.')) {
       // Handles nested JSON/JSONB fields like 'business_details.licence_number'

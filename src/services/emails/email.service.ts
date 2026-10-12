@@ -1,8 +1,8 @@
 import { ConfigService } from '@nestjs/config';
 import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
 import { emailSenderConfig, emailTemplateBuilder } from './config';
 import { UserService } from '../../modules/user/user.service';
-import { InjectRepository } from '@nestjs/typeorm';
 import { User } from '../../modules/user/entities/user.entity';
 import { Repository } from 'typeorm';
 import { EnvConfig } from '../../common/config/env.config';
