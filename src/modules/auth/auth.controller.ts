@@ -5,6 +5,7 @@ import {
   GoogleLoginDto,
   LoginDto,
   ResetPasswordDto,
+  VerifyOtpDto,
 } from './dto/auth.dto';
 import { ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { LocalAuthGuard } from '../../common/middleware/local-auth-guard.middleware';
@@ -27,19 +28,18 @@ export class AuthController {
   @Post('login')
   @Public()
   @UseGuards(LocalAuthGuard)
-  @ApiOperation({ summary: 'Login' })
+  @ApiOperation({ summary: 'Login - Step 1: Verify Email/Password & Send OTP' })
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   login(@Req() req: IRequest, @Body() body: LoginDto) {
-    return this.authService.login(req.user);
+    return this.authService.sendLoginOtp(req.user);
   }
 
-  // @Post('verify-login')
-  // @UseGuards(LocalAuthGuard)
-  // @ApiOperation({ summary: 'Login' })
-  // // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  // verifyLogin(@Req() req: IRequest, @Body() body: LoginDto) {
-  //   return this.authService.login(req.user);
-  // }
+  @Post('verify-login')
+  @Public()
+  @ApiOperation({ summary: 'Login - Step 2: Verify OTP & Issue Access Token' })
+  verifyLogin(@Body() data: VerifyOtpDto) {
+    return this.authService.verifyOtpAndLogin(data);
+  }
 
   @Post('/google/signin')
   @Public()

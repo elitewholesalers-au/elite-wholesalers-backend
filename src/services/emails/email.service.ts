@@ -48,6 +48,24 @@ export class EmailService {
     }
   }
 
+  async sendLoginOTPVerificationEmail(
+    email: string,
+    data: { otp: string; name: string },
+  ) {
+    const frontendUrl = this.configService.get<string>(EnvConfig.FRONTEND_URL);
+    const mailOptions = emailTemplateBuilder(
+      'login-verify.hbs',
+      email,
+      `Elite Wholesalers OTP - ${data.otp} is your verification code`,
+      'Login Verification',
+      {
+        ...data,
+        verificationLink: `${frontendUrl}/login/verify?email=${email}&token=${data.otp}`,
+      },
+    );
+    return emailSenderConfig(mailOptions);
+  }
+
   async sendOTPVerificationEmail(
     email: string,
     data: { otp: string; name: string },

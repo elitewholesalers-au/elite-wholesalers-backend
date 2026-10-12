@@ -17,7 +17,7 @@ import { EmailService } from '../../services/emails/email.service';
 import { OAuth2Client } from 'google-auth-library';
 import { Verification } from './entities/auth.entity';
 import { uniqueNumber } from '../../common/utils/unique-numbers';
-import { ResetPasswordDto } from './dto/auth.dto';
+import { ResetPasswordDto, VerifyOtpDto } from './dto/auth.dto';
 import { DataSource } from 'typeorm';
 import { ZohoPayloadGenerator } from '../zoho/dto/user-generator';
 import { ZohoInventoryService } from '../zoho/zoho-inventory.service';
@@ -107,7 +107,62 @@ export class AuthService {
     return this.userService.findAllUser();
   }
 
-  login(user: User): AuthResponse {
+  async sendLoginOtp(body: User) {
+    try {
+      const verification_code = uniqueNumber.generateOtp().toString();
+      const user = await this.userRepository.findOne({
+        where: { email: body.email },
+      });
+      if (user) {
+        const verificationCreated = await this.createVerificationCode(
+          user.id,
+          verification_code,
+        );
+        if (verificationCreated) {
+          const email_is_sent =
+            await this.emailService.sendLoginOTPVerificationEmail(user.email, {
+              otp: verification_code,
+              name: user.fullname,
+            });
+
+          if (email_is_sent)
+            return { message: 'verification code sent successfully' };
+          else throw new Error('Unable to send e-mail');
+        }
+      } else throw new NotFoundException('No user with the email found');
+    } catch (e: unknown) {
+      throw new BadRequestException(e);
+    }
+  }
+
+  async verifyOtpAndLogin(data: VerifyOtpDto): Promise<AuthResponse> {
+    const { email, verification_code } = data;
+
+    // 1. Find User
+    const user = await this.userRepository.findOne({ where: { email } });
+    if (!user) {
+      throw new NotFoundException(
+        'Email not recognized. Please enter your correct email.',
+      );
+    }
+
+    // 2. Find Verification Record
+    const verificationRecord = await this.verificationRepository.findOne({
+      where: { userId: user.id },
+    });
+
+    if (!verificationRecord) {
+      throw new UnauthorizedException('Verification code timeout or invalid.');
+    }
+    if (verificationRecord.verification_code !== verification_code) {
+      throw new BadRequestException('Incorrect verification code.');
+    }
+    if (new Date() > verificationRecord.expire_at) {
+      await this.verificationRepository.delete({ userId: user.id }); // Clean up expired
+      throw new BadRequestException('Verification code has expired.');
+    }
+
+    await this.verificationRepository.delete({ userId: user.id });
     const payload: JwtPayload = {
       username: user.username,
       accountType: user.accountType,
@@ -218,7 +273,7 @@ export class AuthService {
     return { message: 'Password reset successfully' };
   }
 
-  async googleLogin(token: string): Promise<AuthResponse> {
+  async googleLogin(token: string) {
     try {
       // 1. Exchange the code for the actual tokens
       const { tokens } = await this.googleClient.getToken({
@@ -249,8 +304,6 @@ export class AuthService {
           user.accountType,
         );
       }
-
-      return this.login(user);
     } catch (error) {
       throw new UnauthorizedException(error);
     }

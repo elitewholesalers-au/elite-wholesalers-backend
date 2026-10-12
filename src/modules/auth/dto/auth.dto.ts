@@ -12,7 +12,7 @@ import {
 
 @Injectable()
 export class LoginDto {
-  @ApiProperty({ example: 'samsonrealgreat@gmail.com' })
+  @ApiProperty({ example: 'web@elitewholesalers.com.au' })
   @IsString()
   @IsEmail()
   @IsNotEmpty()
@@ -25,7 +25,7 @@ export class LoginDto {
 }
 
 export class ForgotPasswordDto {
-  @ApiProperty({ example: 'samsonrealgreat@gmail.com' })
+  @ApiProperty({ example: 'web@elitewholesalers.com.au' })
   @IsString()
   @IsEmail()
   @IsNotEmpty()
@@ -55,7 +55,7 @@ export class CreateVerificationDto {
 }
 
 export class ResetPasswordDto {
-  @ApiProperty({ example: 'samsonrealgreat@gmail.com' })
+  @ApiProperty({ example: 'web@elitewholesalers.com.au' })
   @IsEmail()
   @IsNotEmpty()
   email: string;
@@ -64,6 +64,18 @@ export class ResetPasswordDto {
   @IsNotEmpty()
   @MinLength(6, { message: 'Password must be at least 6 characters' })
   password: string;
+
+  @ApiProperty({ example: '3456' })
+  @IsNotEmpty()
+  @IsString()
+  verification_code: string;
+}
+
+export class VerifyOtpDto {
+  @ApiProperty({ example: 'web@elitewholesalers.com.au' })
+  @IsEmail()
+  @IsNotEmpty()
+  email: string;
 
   @ApiProperty({ example: '3456' })
   @IsNotEmpty()

@@ -1,0 +1,66 @@
+<tr>
+  <td align='left'>
+    <p style='margin-bottom: 12px'>Hi {{name}},</p>
+    <p>An attempt was made to login to your account.</p>
+    <p>Find your verifcation code below to access your account:</p>
+  </td>
+</tr>
+<tr>
+  <td>
+    <div class=''>
+      <h2
+        style="
+        font-size: 32px !important; 
+        font-weight: 800 !important;
+        text-indent: 0.8em;
+        letter-spacing: 12px; 
+        background-color: #c8c8ffc5;
+        padding: 4px;
+        border-radius: 8px;
+        font-family: 'Courier New', Courier, monospace; 
+        text-align: center;
+        margin: 20px auto;
+"
+      >
+        {{otp}}
+      </h2>
+    </div>
+
+  </td>
+</tr>
+
+<tr>
+  <td align='center' style='padding: 30px 0;'>
+    <table
+      width='100%'
+      border='0'
+      cellpadding='0'
+      cellspacing='0'
+      style='max-width: 320px; margin: 0 auto;'
+    >
+      <tr>
+        <td align='center'>
+          <a
+            href='{{verificationLink}}'
+            target='_blank'
+            class='button'
+          >Verification Link</a>
+        </td>
+      </tr>
+    </table>
+  </td>
+</tr>
+
+<tr>
+  <td align='left'>
+    <p style='margin: 24px 0 0 0;'>
+      This code will expire in
+      <strong>5 minutes</strong>
+      for security reasons.
+    </p>
+    <p style='margin: 12px 0 0 0;'>
+      If you didn't request a login access, please ignore this email or contact
+      our support team if you have concerns.
+    </p>
+  </td>
+</tr>
