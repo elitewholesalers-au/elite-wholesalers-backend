@@ -101,8 +101,7 @@ export class EmailService {
   }) {
     const mailOptions = emailTemplateBuilder(
       'contact-us.hbs',
-      // 'info@elitewholesalers.com.au',
-      'samsonrealgreat@gmail.com',
+      'info@elitewholesalers.com.au',
       'New Message from Website',
       `A new Message`,
       data,

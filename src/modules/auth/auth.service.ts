@@ -99,6 +99,14 @@ export class AuthService {
     }
   }
 
+  getAuthUser(id: string) {
+    return this.userService.findOne({ id });
+  }
+
+  findAll() {
+    return this.userService.findAllUser();
+  }
+
   login(user: User): AuthResponse {
     const payload: JwtPayload = {
       username: user.username,
@@ -131,10 +139,6 @@ export class AuthService {
     } else return null;
   }
 
-  getAuthUser(id: string) {
-    return this.userService.findOne({ id });
-  }
-
   async forgotPassword(email: string) {
     try {
       const verification_code = uniqueNumber.generateOtp().toString();
@@ -159,48 +163,6 @@ export class AuthService {
     } catch (e: unknown) {
       throw new BadRequestException(e);
     }
-  }
-
-  async googleLogin(token: string): Promise<AuthResponse> {
-    try {
-      // 1. Exchange the code for the actual tokens
-      const { tokens } = await this.googleClient.getToken({
-        code: token,
-        redirect_uri: 'postmessage',
-      });
-      const ticket = await this.googleClient.verifyIdToken({
-        idToken: tokens.id_token!,
-        audience: process.env.GOOGLE_CLIENT_ID,
-      });
-
-      const googlePayload = ticket.getPayload();
-      if (!googlePayload) throw new UnauthorizedException();
-
-      const { email, given_name, family_name, picture } = googlePayload;
-      let user = await this.userRepository.findOneBy({ email });
-
-      if (!user) {
-        user = new User();
-        user.firstname = given_name ?? 'new';
-        user.lastname = family_name ?? 'user';
-        user.email = email!;
-        user.picture = picture ?? '';
-        user = await this.userRepository.save(user);
-        await this.emailService.sendWelcomeEmail(
-          email!,
-          `${family_name ?? ''} ${given_name ?? ''}`.trim(),
-          user.accountType,
-        );
-      }
-
-      return this.login(user);
-    } catch (error) {
-      throw new UnauthorizedException(error);
-    }
-  }
-
-  findAll() {
-    return this.userService.findAllUser();
   }
 
   async createVerificationCode(userId: string, verification_code: string) {
@@ -254,6 +216,44 @@ export class AuthService {
     await this.userRepository.save(user);
     await this.verificationRepository.delete({ userId: user.id });
     return { message: 'Password reset successfully' };
+  }
+
+  async googleLogin(token: string): Promise<AuthResponse> {
+    try {
+      // 1. Exchange the code for the actual tokens
+      const { tokens } = await this.googleClient.getToken({
+        code: token,
+        redirect_uri: 'postmessage',
+      });
+      const ticket = await this.googleClient.verifyIdToken({
+        idToken: tokens.id_token!,
+        audience: process.env.GOOGLE_CLIENT_ID,
+      });
+
+      const googlePayload = ticket.getPayload();
+      if (!googlePayload) throw new UnauthorizedException();
+
+      const { email, given_name, family_name, picture } = googlePayload;
+      let user = await this.userRepository.findOneBy({ email });
+
+      if (!user) {
+        user = new User();
+        user.firstname = given_name ?? 'new';
+        user.lastname = family_name ?? 'user';
+        user.email = email!;
+        user.picture = picture ?? '';
+        user = await this.userRepository.save(user);
+        await this.emailService.sendWelcomeEmail(
+          email!,
+          `${family_name ?? ''} ${given_name ?? ''}`.trim(),
+          user.accountType,
+        );
+      }
+
+      return this.login(user);
+    } catch (error) {
+      throw new UnauthorizedException(error);
+    }
   }
 }
 

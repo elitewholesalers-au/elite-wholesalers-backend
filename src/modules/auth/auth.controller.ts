@@ -33,6 +33,14 @@ export class AuthController {
     return this.authService.login(req.user);
   }
 
+  // @Post('verify-login')
+  // @UseGuards(LocalAuthGuard)
+  // @ApiOperation({ summary: 'Login' })
+  // // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  // verifyLogin(@Req() req: IRequest, @Body() body: LoginDto) {
+  //   return this.authService.login(req.user);
+  // }
+
   @Post('/google/signin')
   @Public()
   @ApiOperation({ summary: 'Google Login' })
