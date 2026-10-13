@@ -1,11 +1,6 @@
 export const shippingFees = [
   {
     min: 0,
-    max: 99,
-    fee: 10,
-  },
-  {
-    min: 100,
     max: 150,
     fee: 25,
   },
@@ -22,7 +17,7 @@ export const shippingFees = [
   {
     min: 751,
     max: 1000,
-    fee: 85,
+    fee: 65,
   },
   {
     min: 1001,
@@ -31,7 +26,12 @@ export const shippingFees = [
   },
   {
     min: 1501,
-    max: Infinity,
+    max: 2000,
     fee: 95,
+  },
+  {
+    min: 2001,
+    max: Infinity,
+    fee: 150,
   },
 ];
