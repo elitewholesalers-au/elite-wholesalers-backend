@@ -7,9 +7,10 @@ import { UserService } from '../user/user.service';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Cart } from './entities/cart.entity';
-import { AccountType } from '../user/dto/create-user.dto';
+import { AccountType, DeliveryMethod } from '../user/dto/create-user.dto';
 import { generatePriceByAccountType } from '../../common/utils/price-generator.utils';
 import { CommerceService } from '../commerce/commerce.service';
+import { shippingFees } from './shipping-fees';
 // import { ZohoApiClient } from './zoho-api.util'; // Your HTTP client
 // import { UserRepository } from '../user/user.repository';
 
@@ -101,7 +102,11 @@ export class CartService {
     return { message: 'Cart cleared successfully' };
   }
 
-  async initializeCheckout(userId: string, accountType: AccountType) {
+  async initializeCheckout(
+    userId: string,
+    accountType: AccountType,
+    deliveryMethod: DeliveryMethod,
+  ) {
     // 1. Fetch user and verify Zoho sync
     const user = await this.userService.findOne({ id: userId });
     if (!user || !user.zohoContactId) {
@@ -109,12 +114,27 @@ export class CartService {
     }
 
     // 2. Fetch ALL cart items for this user from the database
-    const cartItems = await this.cartRepository.find({
-      where: { userId: userId },
-    });
+    const cartItems = await this.cartRepository.find({ where: { userId } });
 
     if (!cartItems || cartItems.length === 0) {
       throw new NotFoundException('Your cart is empty');
+    }
+
+    const subtotal = cartItems.reduce((sum, item) => {
+      return sum + Number(item.total || 0);
+    }, 0);
+
+    // Step 2: Find the matching shipping tier
+    const matchingTier = shippingFees.find(
+      (tier) => subtotal >= tier.min && subtotal <= tier.max,
+    );
+
+    const shippingFee = matchingTier ? matchingTier.fee : 0;
+
+    let shipping_charge = 0;
+
+    if (deliveryMethod === DeliveryMethod.SHIPPING) {
+      shipping_charge = shippingFee;
     }
 
     // 3. Map database cart items to Zoho line items safely using backend price
@@ -136,6 +156,8 @@ export class CartService {
 
     const salesOrderPayload = {
       customer_id: user.zohoContactId,
+      shipping_charge,
+      delivery_method: deliveryMethod,
       line_items: soLineItems,
       date: new Date().toISOString().split('T')[0],
       status: 'confirmed',

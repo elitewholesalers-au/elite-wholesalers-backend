@@ -8,7 +8,9 @@ import {
   IsEnum,
   IsNotEmpty,
   IsPositive,
+  IsUrl,
 } from 'class-validator';
+import { DeliveryMethod } from '../../user/dto/create-user.dto';
 
 export enum Currency {
   AUD = 'AUD',
@@ -33,6 +35,15 @@ export class CreateCartDto {
   @IsNotEmpty()
   item_id: string;
 
+  @ApiProperty({
+    required: true,
+    example:
+      'https://cdn1.zohoecommerce.com/product-images/IXMV7W.jpg/1969240000035741108/600x600?storefront_domain=elitewholesalers.zohoecommerce.com',
+  })
+  @IsString()
+  @IsUrl()
+  image_url: string;
+
   @ApiProperty({ default: 1, example: 1 })
   @Type(() => Number)
   @IsNumber()
@@ -43,4 +54,10 @@ export class CreateCartDto {
   @ValidateNested()
   @Type(() => PriceDto)
   price: PriceDto;
+}
+
+export class DeliveryMethodDto {
+  @ApiProperty({ enum: DeliveryMethod, example: DeliveryMethod.SHIPPING })
+  @IsEnum(DeliveryMethod)
+  delivery_method: DeliveryMethod;
 }

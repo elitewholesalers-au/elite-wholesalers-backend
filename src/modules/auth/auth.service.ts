@@ -68,11 +68,23 @@ export class AuthService {
       this.logger.log(`User created with ID: ${savedUser.id}`); // ID IS NOW AVAILABLE!
 
       // 5. Generate Zoho Payload using the savedUser (which now has an ID)
+
+      const existingUser = await this.getUserByEmail(createUserDto.email);
+
       const zohoPayload =
         ZohoPayloadGenerator.generateContactCreationPayload(savedUser);
 
-      const zohoResponse =
-        await this.zohoInventoryService.createCustomer(zohoPayload);
+      let zohoResponse;
+      if (existingUser) {
+        zohoResponse = await this.zohoInventoryService.updateCustomer(
+          existingUser.contact_id,
+          zohoPayload,
+        );
+      } else {
+        zohoResponse =
+          await this.zohoInventoryService.createCustomer(zohoPayload);
+      }
+
       savedUser.zohoContactId = zohoResponse?.contact_id;
 
       const zohoUser = await transactionalUserRepository.save(savedUser);
@@ -105,6 +117,15 @@ export class AuthService {
 
   findAll() {
     return this.userService.findAllUser();
+  }
+
+  async getUserByEmail(email: string) {
+    const contact = await this.zohoInventoryService.getCustomerByEmail({
+      email,
+    });
+    if (contact.length > 0) {
+      return contact[0];
+    } else return null;
   }
 
   async sendLoginOtp(body: User) {

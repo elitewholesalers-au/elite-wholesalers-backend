@@ -97,6 +97,7 @@ export class CommerceService {
         line_items: invoiceLineItems,
         status: 'draft',
         due_date: dueDate,
+        shipping_charge: salesOrder.shipping_charge,
         payment_options: {
           payment_gateways: [
             {

@@ -1,23 +1,30 @@
 import fs from 'fs';
 import path from 'path';
 import handlebars from 'handlebars';
-import { CreateEmailOptions, Resend } from 'resend';
-import { Logger } from '@nestjs/common';
+// import { CreateEmailOptions } from 'resend';
 
-const EmailLogger = new Logger('EmailModule');
+import nodemailer, { SendMailOptions } from 'nodemailer';
 
 export const emailSenderConfig = async (
-  options: CreateEmailOptions,
+  options: SendMailOptions,
 ): Promise<boolean> => {
-  const resend = new Resend(process.env.RESEND_API_KEY);
+  const transport = nodemailer.createTransport({
+    host: 'smtp.zeptomail.com',
+    port: 465,
+    auth: {
+      user: 'emailApiKey',
+      pass: process.env.ZOHO_CPASS_PASSWORD,
+    },
+  });
 
-  const { error, data } = await resend.emails.send(options);
-  EmailLogger.log({ error, data });
-  if (error) {
+  try {
+    await transport.sendMail(options);
+
+    return true;
+  } catch (error) {
+    console.log({ error });
     return false;
   }
-
-  return true;
 };
 
 export const emailTemplateBuilder = (
@@ -49,13 +56,11 @@ export const emailTemplateBuilder = (
     ...data,
     pageHeading,
     body: bodyHtml,
-    brandUrl: 'https://elitewholesalers.com.au',
+    brandUrl: 'https://www.elitewholesalers.com.au',
   });
 
   return {
-    from:
-      process.env.EMAIL_FROM ??
-      'Elite Wholesalers <support@elitewholesalers.com.au>',
+    from: 'Elite Wholesalers <info@elitewholesalers.com.au>',
     to: email,
     subject,
     html,

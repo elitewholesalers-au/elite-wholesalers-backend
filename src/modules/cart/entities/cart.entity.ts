@@ -37,6 +37,14 @@ export class Cart {
   @Column({ type: 'varchar', nullable: false })
   itemId: string;
 
+  @Column({
+    type: 'varchar',
+    nullable: true,
+    default:
+      'https://cdn1.zohoecommerce.com/product-images/IXMV7W.jpg/1969240000035741108/600x600?storefront_domain=elitewholesalers.zohoecommerce.com',
+  })
+  imageUrl: string;
+
   @Column({ type: 'int', default: 1 })
   quantity: number;
 

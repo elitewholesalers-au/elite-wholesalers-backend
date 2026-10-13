@@ -9,7 +9,7 @@ import {
   Req,
 } from '@nestjs/common';
 import { CartService } from './cart.service';
-import { CreateCartDto } from './dto/create-cart.dto';
+import { CreateCartDto, DeliveryMethodDto } from './dto/create-cart.dto';
 import { UpdateCartDto } from './dto/update-cart.dto';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
 import type { IRequest } from '../../common/interface';
@@ -40,10 +40,14 @@ export class CartController {
   })
   @ApiResponse({ status: 404, description: 'Cart is empty.' })
   @ApiResponse({ status: 500, description: 'Zoho sync or generation failure.' })
-  async checkout(@Req() req: IRequest) {
+  async checkout(
+    @Req() req: IRequest,
+    @Body() deliveryMethodDto: DeliveryMethodDto,
+  ) {
     return await this.cartService.initializeCheckout(
       req.user.id,
       req.user.accountType,
+      deliveryMethodDto.delivery_method,
     );
   }
 

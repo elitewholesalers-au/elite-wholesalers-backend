@@ -4,6 +4,7 @@ import { ZohoApiClient } from './zoho-api.util';
 import { categoriesData } from './custom-data';
 import type {
   CategoryEntity,
+  CustomerEntity,
   InvoicePayload,
   ProductEntity,
 } from './zoho-interface';
@@ -32,6 +33,14 @@ export class ZohoInventoryService {
       headers: { 'Content-Type': 'application/json' },
     });
     return contact;
+  }
+
+  async getCustomerByEmail(data: { email: string }): Promise<CustomerEntity[]> {
+    const { contacts } = await this.inventoryApi.get('/contacts', {
+      params: data,
+    });
+
+    return contacts;
   }
 
   async updateCustomer(

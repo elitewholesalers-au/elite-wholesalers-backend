@@ -365,6 +365,12 @@ export interface Attributes {
   attribute_type3?: string;
 }
 
+export interface CustomerEntity {
+  contact_id: string;
+  contact_name: string;
+  customer_name: string;
+}
+
 interface InvoicePayload {
   customer_id: string;
   line_items: {

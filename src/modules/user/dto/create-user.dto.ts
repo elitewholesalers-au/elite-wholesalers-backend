@@ -4,6 +4,11 @@ export enum AccountType {
   ADMIN = 'ADMIN',
 }
 
+export enum DeliveryMethod {
+  PICKUP = 'PICKUP',
+  SHIPPING = 'SHIPPING',
+}
+
 import { Exclude, Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 import {
