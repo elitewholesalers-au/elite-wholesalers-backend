@@ -2,9 +2,11 @@ import {
   BeforeInsert,
   BeforeUpdate,
   Column,
+  CreateDateColumn,
   DeleteDateColumn,
   Entity,
   PrimaryGeneratedColumn,
+  UpdateDateColumn,
 } from 'typeorm';
 import { BcryptConfig } from '../../../common/utils/bcrypt.utils';
 import { AccountType } from '../dto/create-user.dto';
@@ -121,6 +123,16 @@ export class User {
 
   @DeleteDateColumn({ nullable: true })
   deleted_at: Date;
+
+  @CreateDateColumn({
+    name: 'created_at',
+    type: 'timestamptz',
+    default: () => 'CURRENT_TIMESTAMP',
+  })
+  created_at: Date;
+
+  @UpdateDateColumn()
+  updated_at: Date;
 
   @BeforeInsert()
   @BeforeUpdate()
