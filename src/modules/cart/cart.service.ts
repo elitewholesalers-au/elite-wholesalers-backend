@@ -62,6 +62,7 @@ export class CartService {
         itemId: dto.item_id,
         quantity: dto.quantity,
         zohoContactId: zohoContactId,
+        image_url: dto.image_url,
         price: dto.price,
       });
     }
