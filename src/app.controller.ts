@@ -12,7 +12,6 @@ export class AppController {
   @Get()
   @Public()
   @Render('index')
-  @Render('index')
   root(@Req() req: Request) {
     const payload = this.appService.greetings(req);
     return payload;
