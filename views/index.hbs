@@ -1,10 +1,441 @@
-<html>
+<html lang='en' class='dark scroll-smooth'>
   <head>
     <meta charset='utf-8' />
-    <title>App</title>
+    <meta name='viewport' content='width=device-width, initial-scale=1.0' />
+    <title>{{data.message}} — Backend Core</title>
+    <script src='https://cdn.tailwindcss.com'></script>
+    <link rel='preconnect' href='https://fonts.googleapis.com' />
+    <link rel='preconnect' href='https://fonts.gstatic.com' crossorigin />
+    <link
+      href='https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap'
+      rel='stylesheet'
+    />
+    <script>
+      tailwind.config = { darkMode: 'class', theme: { extend: { fontFamily: {
+      sans: ['Inter', 'sans-serif'], mono: ['JetBrains Mono', 'monospace'], },
+      }, }, };
+    </script>
   </head>
-  <body>
-    Good afternoon,
-    {{message}}
+  <body
+    class='min-h-screen bg-[#09090b] text-zinc-100 font-sans antialiased selection:bg-indigo-500/30 selection:text-indigo-200 overflow-x-hidden'
+  >
+
+    <!-- Ambient Background Grid & Spotlights -->
+    <div class='fixed inset-0 pointer-events-none z-0'>
+      <div
+        class='absolute inset-0 bg-[linear-gradient(to_right,#18181b_1px,transparent_1px),linear-gradient(to_bottom,#18181b_1px,transparent_1px)] bg-[size:3.5rem_3.5rem] [mask-image:radial-gradient(ellipse_80%_60%_at_50%_0%,#000_70%,transparent_110%)] opacity-70'
+      ></div>
+      <div
+        class='absolute -top-24 left-1/2 -translate-x-1/2 h-[420px] w-[850px] rounded-full bg-indigo-500/10 blur-[140px]'
+      ></div>
+      <div
+        class='absolute top-1/2 right-0 h-[300px] w-[400px] rounded-full bg-emerald-500/5 blur-[130px]'
+      ></div>
+    </div>
+
+    <!-- Top Navigation -->
+    <header
+      class='relative z-10 border-b border-zinc-800/80 bg-[#09090b]/80 backdrop-blur-md'
+    >
+      <div
+        class='mx-auto flex max-w-6xl items-center justify-between px-6 py-4'
+      >
+        <div class='flex items-center gap-3'>
+
+          <img
+            src='https://www.elitewholesalersonline.com.au/logo-main.png'
+            alt='Elite Wholesalers Logo'
+            class='h-10 w-fit'
+          />
+          <div class='flex items-center gap-2.5'>
+
+            <span class='hidden sm:inline-block text-zinc-700'>/</span>
+            <span
+              class='hidden sm:inline-block font-mono text-xs text-zinc-400'
+            >api-core</span>
+          </div>
+        </div>
+
+        <div class='flex items-center gap-4'>
+          <div
+            class='hidden md:flex items-center gap-2 rounded-full border border-zinc-800 bg-zinc-900/70 px-3 py-1 font-mono text-xs text-zinc-400'
+          >
+            <span class='text-zinc-500'>ENV:</span>
+            <span
+              class='uppercase text-indigo-400 font-medium'
+            >{{data.environment}}</span>
+          </div>
+
+          <div
+            class='inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 font-mono text-xs text-emerald-400'
+          >
+            <span class='relative flex h-2 w-2'>
+              <span
+                class='absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75'
+              ></span>
+              <span
+                class='relative inline-flex h-2 w-2 rounded-full bg-emerald-500'
+              ></span>
+            </span>
+            All Systems Operational
+          </div>
+
+          <a
+            href='/docs'
+            class='inline-flex items-center gap-1.5 rounded-lg border border-zinc-700 bg-zinc-900 px-3.5 py-1.5 text-xs font-medium text-zinc-200 transition hover:border-zinc-600 hover:bg-zinc-800 hover:text-white'
+          >
+            <span>API Docs</span>
+            <span class='font-mono text-zinc-500'>&rarr;</span>
+          </a>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Landing Content -->
+    <main class='relative z-10 mx-auto max-w-6xl px-6 pt-12 pb-20 sm:pt-20'>
+
+      <!-- Hero Grid (Left: Pitch & CTA | Right: Live Server Response Preview) -->
+      <div class='grid grid-cols-1 items-center gap-12 lg:grid-cols-12'>
+
+        <!-- Left Column: Hero Copy & Greeting -->
+        <div class='lg:col-span-7'>
+          <!-- Personalized Time-of-Day Greeting Pill -->
+          <div
+            class='inline-flex flex-wrap items-center gap-2 rounded-full border border-zinc-800 bg-zinc-900/80 px-3.5 py-1.5 font-mono text-xs text-zinc-300 shadow-sm'
+          >
+            <span class='h-2 w-2 rounded-full bg-indigo-400'></span>
+            <span class='font-semibold text-white'>{{data.greeting}}</span>
+            <span class='text-zinc-700'>&bull;</span>
+            <span class='text-zinc-400'>{{data.localDate}}</span>
+            <span class='text-zinc-700'>&bull;</span>
+            <span class='text-indigo-400'>{{data.localTime}}
+              ({{data.timeZoneOffset}})</span>
+          </div>
+
+          <h1
+            class='mt-6 text-4xl font-extrabold tracking-tight text-white sm:text-6xl leading-[1.1]'
+          >
+            {{data.message}}
+            <br />
+            <span
+              class='bg-gradient-to-r from-indigo-400 via-zinc-200 to-zinc-400 bg-clip-text text-transparent'
+            >
+              Commerce Engine.
+            </span>
+          </h1>
+
+          <p
+            class='mt-6 max-w-xl text-base leading-relaxed text-zinc-400 sm:text-lg'
+          >
+            High-throughput B2B wholesale backend powering real-time catalog
+            indexing, inventory synchronization, automated order fulfillment,
+            and multi-gateway payment processing.
+          </p>
+
+          <!-- Primary CTA Row -->
+          <div class='mt-8 flex flex-wrap items-center gap-4'>
+            <a
+              href='/docs'
+              class='group inline-flex items-center gap-3 rounded-xl bg-white px-6 py-3.5 text-sm font-semibold text-zinc-950 shadow-[0_0_25px_rgba(255,255,255,0.12)] transition-all duration-200 hover:bg-zinc-200 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-zinc-950'
+            >
+              <svg
+                class='h-4 w-4 text-zinc-800'
+                fill='none'
+                viewBox='0 0 24 24'
+                stroke='currentColor'
+                stroke-width='2'
+              >
+                <path
+                  stroke-linecap='round'
+                  stroke-linejoin='round'
+                  d='M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253'
+                />
+              </svg>
+              <span>Explore API Documentation</span>
+              <svg
+                class='h-4 w-4 text-zinc-600 transition-transform duration-200 group-hover:translate-x-1 group-hover:text-zinc-950'
+                fill='none'
+                viewBox='0 0 24 24'
+                stroke='currentColor'
+                stroke-width='2'
+              >
+                <path
+                  stroke-linecap='round'
+                  stroke-linejoin='round'
+                  d='M13 7l5 5m0 0l-5 5m5-5H6'
+                />
+              </svg>
+            </a>
+
+            <div
+              class='flex items-center gap-2.5 rounded-xl border border-zinc-800/90 bg-zinc-900/50 px-4 py-3 font-mono text-xs text-zinc-400'
+            >
+              <span class='text-zinc-500'>TZ:</span>
+              <span class='text-zinc-200'>{{data.timeZone}}</span>
+            </div>
+          </div>
+
+          <!-- Quick Tech Spec Pills -->
+          <div
+            class='mt-10 flex flex-wrap items-center gap-y-2 gap-x-6 border-t border-zinc-900 pt-6 font-mono text-xs text-zinc-500'
+          >
+            <div class='flex items-center gap-2'>
+              <span class='h-1.5 w-1.5 rounded-full bg-emerald-400'></span>
+              <span>REST &amp; Webhooks</span>
+            </div>
+            <div class='flex items-center gap-2'>
+              <span class='h-1.5 w-1.5 rounded-full bg-indigo-400'></span>
+              <span>OpenAPI 3.0 Spec</span>
+            </div>
+            <div class='flex items-center gap-2'>
+              <span class='h-1.5 w-1.5 rounded-full bg-amber-400'></span>
+              <span>Bearer JWT Auth</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Column: Interactive-Style Terminal Card with Live HBS Data -->
+        <div class='lg:col-span-5'>
+          <div
+            class='relative rounded-2xl border border-zinc-800/90 bg-zinc-950/90 shadow-2xl backdrop-blur-xl overflow-hidden'
+          >
+            <!-- macOS Window Bar -->
+            <div
+              class='flex items-center justify-between border-b border-zinc-800/80 bg-zinc-900/60 px-4 py-3'
+            >
+              <div class='flex items-center gap-2'>
+                <span class='h-2.5 w-2.5 rounded-full bg-rose-500/80'></span>
+                <span class='h-2.5 w-2.5 rounded-full bg-amber-500/80'></span>
+                <span class='h-2.5 w-2.5 rounded-full bg-emerald-500/80'></span>
+              </div>
+              <span class='font-mono text-[11px] text-zinc-400'>GET / —
+                {{meta.statusCode}}
+                OK</span>
+              <span
+                class='rounded bg-emerald-500/10 px-1.5 py-0.5 font-mono text-[10px] text-emerald-400 border border-emerald-500/20'
+              >
+                SSR
+              </span>
+            </div>
+
+            <!-- Terminal JSON Body -->
+            <div
+              class='p-5 font-mono text-xs leading-relaxed text-zinc-300 overflow-x-auto'
+            >
+              <div class='text-zinc-500 mb-2'>// Live Server Telemetry Payload</div>
+              <div><span class='text-zinc-500'>{</span></div>
+              <div class='pl-4'>
+                <span class='text-indigo-400'>"success"</span>:
+                <span class='text-emerald-400'>{{meta.success}}</span>,
+              </div>
+              <div class='pl-4'>
+                <span class='text-indigo-400'>"data"</span>:
+                <span class='text-zinc-500'>{</span>
+              </div>
+              <div class='pl-8'>
+                <span class='text-sky-400'>"greeting"</span>:
+                <span class='text-amber-300'>"{{data.greeting}}"</span>,
+              </div>
+              <div class='pl-8'>
+                <span class='text-sky-400'>"service"</span>:
+                <span class='text-amber-300'>"{{data.message}}"</span>,
+              </div>
+              <div class='pl-8'>
+                <span class='text-sky-400'>"localTime"</span>:
+                <span class='text-amber-300'>"{{data.localTime}}"</span>,
+              </div>
+              <div class='pl-8'>
+                <span class='text-sky-400'>"localDate"</span>:
+                <span class='text-amber-300'>"{{data.localDate}}"</span>,
+              </div>
+              <div class='pl-8'>
+                <span class='text-sky-400'>"timeZone"</span>:
+                <span class='text-amber-300'>"{{data.timeZone}}"</span>,
+              </div>
+              <div class='pl-8'>
+                <span class='text-sky-400'>"offset"</span>:
+                <span class='text-amber-300'>"{{data.timeZoneOffset}}"</span>,
+              </div>
+              <div class='pl-8'>
+                <span class='text-sky-400'>"environment"</span>:
+                <span class='text-amber-300'>"{{data.environment}}"</span>,
+              </div>
+              <div class='pl-8'>
+                <span class='text-sky-400'>"docsUrl"</span>:
+                <span class='text-emerald-400'>"/docs"</span>
+              </div>
+              <div class='pl-4'><span class='text-zinc-500'>},</span></div>
+              <div class='pl-4'>
+                <span class='text-indigo-400'>"timestamp"</span>:
+                <span class='text-emerald-400'>"{{timestamp}}"</span>,
+              </div>
+              <div><span class='text-zinc-500'>}</span></div>
+            </div>
+
+            <!-- Terminal Bottom Bar -->
+            <div
+              class='flex items-center justify-between border-t border-zinc-800/80 bg-zinc-900/40 px-4 py-2.5 font-mono text-[11px] text-zinc-500'
+            >
+              <span>Engine: NestJS + TypeScript</span>
+              <span class='text-zinc-400'>Content-Type: text/html</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Bento Grid: Core Backend Architecture Modules -->
+      <div class='mt-20'>
+        <div
+          class='flex flex-col justify-between gap-2 border-b border-zinc-800/80 pb-4 sm:flex-row sm:items-end'
+        >
+          <div>
+            <h2
+              class='font-mono text-xs uppercase tracking-widest text-indigo-400'
+            >Core Infrastructure</h2>
+            <p class='mt-1 text-lg font-semibold text-white'>Platform Services
+              &amp; Integrations</p>
+          </div>
+          <p class='font-mono text-xs text-zinc-500'>
+            Inspect schemas and payloads in
+            <a
+              href='/docs'
+              class='text-zinc-300 underline decoration-zinc-700 underline-offset-4 hover:text-white'
+            >/docs</a></p>
+        </div>
+
+        <div class='mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3'>
+
+          <!-- Module 1: Inventory & Catalog Sync -->
+          <div
+            class='group rounded-2xl border border-zinc-800/80 bg-zinc-900/30 p-6 transition hover:border-zinc-700/80 hover:bg-zinc-900/50'
+          >
+            <div
+              class='flex h-10 w-10 items-center justify-center rounded-lg border border-zinc-800 bg-zinc-950 text-indigo-400'
+            >
+              <svg
+                class='h-5 w-5'
+                fill='none'
+                viewBox='0 0 24 24'
+                stroke='currentColor'
+                stroke-width='1.8'
+              >
+                <path
+                  stroke-linecap='round'
+                  stroke-linejoin='round'
+                  d='M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4'
+                />
+              </svg>
+            </div>
+            <h3 class='mt-4 text-base font-semibold text-white'>Inventory &amp;
+              ERP Sync</h3>
+            <p class='mt-2 text-sm leading-relaxed text-zinc-400'>
+              Bi-directional stock level synchronization, wholesale tier
+              pricing, SKU management, and automated webhook listeners.
+            </p>
+            <div
+              class='mt-4 inline-flex items-center gap-1.5 font-mono text-xs text-zinc-500'
+            >
+              <span class='h-1.5 w-1.5 rounded-full bg-emerald-400'></span>
+              <span>Zoho Inventory / Commerce Ready</span>
+            </div>
+          </div>
+
+          <!-- Module 2: Checkout & Payments -->
+          <div
+            class='group rounded-2xl border border-zinc-800/80 bg-zinc-900/30 p-6 transition hover:border-zinc-700/80 hover:bg-zinc-900/50'
+          >
+            <div
+              class='flex h-10 w-10 items-center justify-center rounded-lg border border-zinc-800 bg-zinc-950 text-emerald-400'
+            >
+              <svg
+                class='h-5 w-5'
+                fill='none'
+                viewBox='0 0 24 24'
+                stroke='currentColor'
+                stroke-width='1.8'
+              >
+                <path
+                  stroke-linecap='round'
+                  stroke-linejoin='round'
+                  d='M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z'
+                />
+              </svg>
+            </div>
+            <h3 class='mt-4 text-base font-semibold text-white'>Wholesale
+              Checkout &amp; Billing</h3>
+            <p class='mt-2 text-sm leading-relaxed text-zinc-400'>
+              Idempotent payment intents, bulk order invoicing, webhook
+              signature verification, and automated ledger reconciliation.
+            </p>
+            <div
+              class='mt-4 inline-flex items-center gap-1.5 font-mono text-xs text-zinc-500'
+            >
+              <span class='h-1.5 w-1.5 rounded-full bg-indigo-400'></span>
+              <span>Stripe Gateway Integration</span>
+            </div>
+          </div>
+
+          <!-- Module 3: Auth & RBAC Security -->
+          <div
+            class='group rounded-2xl border border-zinc-800/80 bg-zinc-900/30 p-6 transition hover:border-zinc-700/80 hover:bg-zinc-900/50 sm:col-span-2 lg:col-span-1'
+          >
+            <div
+              class='flex h-10 w-10 items-center justify-center rounded-lg border border-zinc-800 bg-zinc-950 text-amber-400'
+            >
+              <svg
+                class='h-5 w-5'
+                fill='none'
+                viewBox='0 0 24 24'
+                stroke='currentColor'
+                stroke-width='1.8'
+              >
+                <path
+                  stroke-linecap='round'
+                  stroke-linejoin='round'
+                  d='M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z'
+                />
+              </svg>
+            </div>
+            <h3 class='mt-4 text-base font-semibold text-white'>Identity &amp;
+              Access Control</h3>
+            <p class='mt-2 text-sm leading-relaxed text-zinc-400'>
+              Role-based access guards for wholesale buyers and administrators,
+              rate limiting, and strict DTO validation pipes.
+            </p>
+            <div
+              class='mt-4 inline-flex items-center gap-1.5 font-mono text-xs text-zinc-500'
+            >
+              <span class='h-1.5 w-1.5 rounded-full bg-amber-400'></span>
+              <span>PostgreSQL + TypeORM Persistence</span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class='relative z-10 border-t border-zinc-900 bg-[#09090b]/90'>
+      <div
+        class='mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-6 py-6 font-mono text-xs text-zinc-500 sm:flex-row'
+      >
+        <div>
+          &copy;
+          {{data.year}}
+          Elite Wholesalers. All rights reserved.
+        </div>
+        <div class='flex items-center gap-6'>
+          <span>Server Time:
+            <strong class='font-normal text-zinc-400'>{{data.localTime}}
+              ({{data.timeZone}})</strong></span>
+          <a
+            href='/docs'
+            class='text-indigo-400 hover:text-indigo-300 transition'
+          >API Reference &rarr;</a>
+        </div>
+      </div>
+    </footer>
   </body>
 </html>

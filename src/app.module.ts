@@ -27,8 +27,8 @@ import { ZohoModule } from './modules/zoho/zoho.module';
 import { CartModule } from './modules/cart/cart.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { FirmwareModule } from './modules/firmware/firmware.module';
-
 import { createObserveModule } from '@nestjs/observe';
+import { JobsModule } from './services/jobs/jobs.module';
 
 export const { ObserveModule, ObserveInstrument } = createObserveModule();
 
@@ -54,6 +54,7 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
     CartModule,
     AdminModule,
     FirmwareModule,
+    JobsModule,
   ],
   controllers: [AppController],
   providers: [

@@ -62,7 +62,7 @@ async function bootstrap() {
     instrument: ObserveInstrument,
   });
   app.setGlobalPrefix('api', {
-    exclude: ['/status', '/socket.io'],
+    exclude: ['/status', '/socket.io', '/'],
   });
   app.enableCors();
 

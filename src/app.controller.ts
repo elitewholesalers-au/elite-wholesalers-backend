@@ -1,7 +1,8 @@
-import { Controller, Get, Render } from '@nestjs/common';
+import { Controller, Get, Headers, Render, Req } from '@nestjs/common';
 import { AppService } from './app.service';
 import { ApiExcludeController } from '@nestjs/swagger';
 import { Public } from './common/decorators';
+import type { Request } from 'express';
 
 @Controller()
 @ApiExcludeController()
@@ -11,8 +12,9 @@ export class AppController {
   @Get()
   @Public()
   @Render('index')
-  root() {
-    this.appService.greetings();
-    return { message: 'Hello world!' };
+  @Render('index')
+  root(@Req() req: Request) {
+    const payload = this.appService.greetings(req);
+    return payload;
   }
 }
