@@ -85,7 +85,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     }
 
     // 4. Log Critical Errors (500s)
-    if (status === (HttpStatus.INTERNAL_SERVER_ERROR as number)) {
+    if (status === Number(HttpStatus.INTERNAL_SERVER_ERROR)) {
       this.logger.error(exception);
     }
 

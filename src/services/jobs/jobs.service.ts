@@ -12,12 +12,7 @@ export class JobsService {
   ) {}
   private readonly logger = new Logger(JobsService.name);
 
-  @Cron('45 * * * * *')
-  handleDatabaseKeepAlive() {
-    this.logger.debug('Called when the current second is 45');
-  }
-
-  @Cron(CronExpression.EVERY_6_HOURS)
+  @Cron(CronExpression.EVERY_30_MINUTES)
   async handleKeepAlive() {
     try {
       this.logger.log('Sending keep-alive ping to Neon database...');

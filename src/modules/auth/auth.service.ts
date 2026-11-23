@@ -99,7 +99,7 @@ export class AuthService {
         savedUser.accountType,
       );
 
-      return zohoUser;
+      return { data: zohoUser, message: 'Account created successfully!' };
     } catch (error) {
       // 9. If anything fails (database error, Zoho error, etc.), rollback the local DB insert
       await queryRunner.rollbackTransaction();

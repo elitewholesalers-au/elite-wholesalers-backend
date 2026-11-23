@@ -62,7 +62,7 @@ async function bootstrap() {
     instrument: ObserveInstrument,
   });
   app.setGlobalPrefix('api', {
-    exclude: ['/status', '/socket.io', '/'],
+    exclude: ['/status', '/socket.io', '/', '/docs'],
   });
   app.enableCors();
 
@@ -127,10 +127,10 @@ async function bootstrap() {
     .build();
   const documentFactory = () => SwaggerModule.createDocument(app, config);
 
-  SwaggerModule.setup('api/swagger-docs', app, documentFactory, swaggerOptions);
+  SwaggerModule.setup('/swagger-docs', app, documentFactory, swaggerOptions);
   const { apiReference } = await import('@scalar/nestjs-api-reference');
   app.use(
-    '/api/docs',
+    '/docs',
     apiReference({
       content: documentFactory,
       theme: 'bluePlanet',

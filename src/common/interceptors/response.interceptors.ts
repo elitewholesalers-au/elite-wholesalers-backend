@@ -26,16 +26,27 @@ export class ResponseInterceptor<T> implements NestInterceptor<T, Response<T>> {
   ): Observable<Response<T>> {
     return next.handle().pipe(
       map((data) => {
-        // 1. Get response/status INSIDE the map to ensure we get the final status
+        // Inside map((data) => { ... })
         const ctx = context.switchToHttp();
         const response = ctx.getResponse();
         const statusCode = response.statusCode;
-        const statusMessage = http.STATUS_CODES[statusCode] || 'SUCCESS';
 
-        // 2. Return the wrapper
+        let statusMessage = http.STATUS_CODES[statusCode] || 'SUCCESS';
+        let payload = data;
+        if (data && typeof data === 'object' && 'message' in data) {
+          statusMessage = data.message;
+          if ('data' in data) {
+            payload = data.data;
+          } else {
+            const rest = { ...data };
+            delete rest.message;
+            payload = rest;
+          }
+        }
+
         return {
           meta: { success: true, statusCode, statusMessage },
-          data: data, // Don't touch data here. Let Serialization handle it.
+          data: payload,
           timestamp: new Date().toISOString(),
         };
       }),
