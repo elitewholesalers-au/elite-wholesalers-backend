@@ -1,4 +1,9 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { CreateCartDto } from './dto/create-cart.dto';
 import { UpdateCartDto } from './dto/update-cart.dto';
 import { InternalServerErrorException } from '@nestjs/common';
@@ -136,7 +141,14 @@ export class CartService {
     const subtotal = cartItems.reduce((sum, item) => {
       return sum + Number(item.total || 0);
     }, 0);
+const normalizedPromoCode = promoCode?.trim().toUpperCase();
 
+if (
+  normalizedPromoCode &&
+  normalizedPromoCode !== WEEKLY20_PROMO_CODE
+) {
+  throw new BadRequestException('Invalid promotional code');
+}
     // Step 2: Find the matching shipping tier
     const matchingTier = shippingFees.find(
       (tier) => subtotal >= tier.min && subtotal <= tier.max,
