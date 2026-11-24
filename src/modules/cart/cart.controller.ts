@@ -29,7 +29,25 @@ export class CartController {
     const zohoContactId = req.user?.zohoContactId;
     return await this.cartService.addToCart(userId, zohoContactId, dto);
   }
-
+ @Post('/checkout/preview')
+  @ApiOperation({
+    summary: 'Preview checkout totals without creating a Zoho order',
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'Checkout preview calculated successfully.',
+  })
+  async previewCheckout(
+    @Req() req: IRequest,
+    @Body() deliveryMethodDto: DeliveryMethodDto,
+  ) {
+    return await this.cartService.previewCheckout(
+      req.user.id,
+      req.user.accountType,
+      deliveryMethodDto.delivery_method,
+      deliveryMethodDto.promo_code,
+    );
+  }
   @Post('/checkout')
   @ApiOperation({
     summary: 'Initialize checkout for all items in the user cart',
