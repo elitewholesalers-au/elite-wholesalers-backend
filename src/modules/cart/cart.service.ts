@@ -13,7 +13,18 @@ import { CommerceService } from '../commerce/commerce.service';
 import { shippingFees } from './shipping-fees';
 // import { ZohoApiClient } from './zoho-api.util'; // Your HTTP client
 // import { UserRepository } from '../user/user.repository';
+const WEEKLY20_PROMO_CODE = 'WEEKLY20';
+const WEEKLY20_DISCOUNT_RATE = 0.20;
 
+function isEliteAlarmsProduct(product: {
+  brand?: string;
+  category_name?: string;
+}): boolean {
+  return (
+    product.brand?.trim().toUpperCase() === 'ELITE ALARMS' &&
+    product.category_name?.trim().toUpperCase() === 'ELITE ALARMS'
+  );
+}
 @Injectable()
 export class CartService {
   constructor(
