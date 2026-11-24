@@ -18,6 +18,7 @@ import { CommerceService } from '../commerce/commerce.service';
 import { shippingFees } from './shipping-fees';
 // import { ZohoApiClient } from './zoho-api.util'; // Your HTTP client
 // import { UserRepository } from '../user/user.repository';
+// Trigger Railway staging deployment for WEEKLY20 checkout preview
 const WEEKLY20_PROMO_CODE = 'WEEKLY20';
 const WEEKLY20_DISCOUNT_RATE = 0.20;
 
