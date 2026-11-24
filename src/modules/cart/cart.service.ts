@@ -186,7 +186,14 @@ if (
     if (!Number.isFinite(normalPrice) || normalPrice < 0) {
       throw new BadRequestException('Invalid product price');
     }
-
+this.logger.log(
+  `WEEKLY20 CHECK: ${JSON.stringify({
+    itemId: item.itemId,
+    brand: product.brand,
+    category: product.category_name,
+    promoReceived: normalizedPromoCode,
+  })}`,
+);
     // Apply WEEKLY20 only to ELITE ALARMS products.
     const isEligible =
       normalizedPromoCode === WEEKLY20_PROMO_CODE &&
