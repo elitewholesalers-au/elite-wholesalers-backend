@@ -45,9 +45,10 @@ export class CartController {
     @Body() deliveryMethodDto: DeliveryMethodDto,
   ) {
     return await this.cartService.initializeCheckout(
-      req.user.id,
-      req.user.accountType,
-      deliveryMethodDto.delivery_method,
+  req.user.id,
+  req.user.accountType,
+  deliveryMethodDto.delivery_method,
+  deliveryMethodDto.promo_code,
     );
   }
 
