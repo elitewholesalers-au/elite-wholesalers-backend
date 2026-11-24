@@ -9,6 +9,7 @@ import {
   IsNotEmpty,
   IsPositive,
   IsUrl,
+  IsOptional,
 } from 'class-validator';
 import { DeliveryMethod } from '../../user/dto/create-user.dto';
 
@@ -60,4 +61,13 @@ export class DeliveryMethodDto {
   @ApiProperty({ enum: DeliveryMethod, example: DeliveryMethod.SHIPPING })
   @IsEnum(DeliveryMethod)
   delivery_method: DeliveryMethod;
+
+    @ApiProperty({
+    required: false,
+    example: 'WEEKLY20',
+    description: 'Optional promotional discount code',
+  })
+  @IsOptional()
+  @IsString()
+  promo_code?: string;
 }
