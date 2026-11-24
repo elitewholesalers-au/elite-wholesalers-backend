@@ -163,22 +163,59 @@ if (
     }
 
     // 3. Map database cart items to Zoho line items safely using backend price
-    const soLineItems = cartItems.map((item) => ({
+    const soLineItems = await Promise.all(
+  cartItems.map(async (item) => {
+    // Retrieve the current product details directly from Zoho.
+    const product = await this.zohoInventoryService.getInventoryItem(
+      item.itemId,
+    );
+
+    if (
+      !product ||
+      product.status !== 'active' ||
+      !product.can_be_sold
+    ) {
+      throw new BadRequestException(
+        'A product in your cart is no longer available for sale',
+      );
+    }
+
+    // Calculate the customer's normal Retail or Trade price.
+    const pricedProduct = generatePriceByAccountType(accountType)(product);
+    const normalPrice = pricedProduct.price.amount;
+
+    if (!Number.isFinite(normalPrice) || normalPrice < 0) {
+      throw new BadRequestException('Invalid product price');
+    }
+
+    // Apply WEEKLY20 only to ELITE ALARMS products.
+    const isEligible =
+      normalizedPromoCode === WEEKLY20_PROMO_CODE &&
+      isEliteAlarmsProduct(product);
+
+    const finalPrice = isEligible
+      ? Math.round(
+          normalPrice * (1 - WEEKLY20_DISCOUNT_RATE) * 100,
+        ) / 100
+      : Math.round(normalPrice * 100) / 100;
+
+    return {
       item_id: item.itemId,
       quantity: item.quantity,
-      rate: item.price.amount,
+      rate: finalPrice,
       custom_fields: [
-        {
+       {
           label: 'accountType',
           value: accountType,
         },
         {
           label: 'sellingPrice',
-          value: item.price.amount,
+          value: finalPrice,
         },
       ],
-    }));
-
+    };
+  }),
+); 
     const salesOrderPayload = {
       customer_id: user.zohoContactId,
       shipping_charge,
