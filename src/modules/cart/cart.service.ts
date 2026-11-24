@@ -118,7 +118,114 @@ export class CartService {
     await this.cartRepository.delete({ userId });
     return { message: 'Cart cleared successfully' };
   }
+ async previewCheckout(
+    userId: string,
+    accountType: AccountType,
+    deliveryMethod: DeliveryMethod,
+    promoCode?: string,
+  ) {
+    const cartItems = await this.cartRepository.find({
+      where: { userId },
+    });
 
+    if (cartItems.length === 0) {
+      throw new NotFoundException('Your cart is empty');
+    }
+
+    const normalizedPromoCode = promoCode?.trim().toUpperCase();
+
+    if (
+      normalizedPromoCode &&
+      normalizedPromoCode !== WEEKLY20_PROMO_CODE
+    ) {
+      throw new BadRequestException('Invalid promotional code');
+    }
+
+    const roundMoney = (value: number) =>
+      Math.round((value + Number.EPSILON) * 100) / 100;
+
+    const items = await Promise.all(
+      cartItems.map(async (item) => {
+        const product =
+          await this.zohoInventoryService.getInventoryItem(item.itemId);
+
+        if (
+          !product ||
+          product.status?.toLowerCase() !== 'active' ||
+          !product.can_be_sold
+        ) {
+          throw new BadRequestException(
+            'A product in your cart is no longer available for sale',
+          );
+        }
+
+        const pricedProduct =
+          generatePriceByAccountType(accountType)(product);
+
+        const normalPrice = pricedProduct.price.amount;
+
+        if (!Number.isFinite(normalPrice) || normalPrice < 0) {
+          throw new BadRequestException('Invalid product price');
+        }
+
+        const eligible =
+          normalizedPromoCode === WEEKLY20_PROMO_CODE &&
+          isEliteAlarmsProduct(product);
+
+        const finalPrice = eligible
+          ? roundMoney(normalPrice * (1 - WEEKLY20_DISCOUNT_RATE))
+          : roundMoney(normalPrice);
+
+        return {
+          item_id: item.itemId,
+          name: product.name,
+          sku: product.sku,
+          quantity: item.quantity,
+          original_unit_price: roundMoney(normalPrice),
+          discounted_unit_price: finalPrice,
+          original_total: roundMoney(normalPrice * item.quantity),
+          discounted_total: roundMoney(finalPrice * item.quantity),
+          discount_amount: roundMoney(
+            (roundMoney(normalPrice) - finalPrice) * item.quantity,
+          ),
+          eligible_for_discount: eligible,
+        };
+      }),
+    );
+
+    const originalSubtotal = roundMoney(
+      items.reduce((sum, item) => sum + item.original_total, 0),
+    );
+
+    const discountedSubtotal = roundMoney(
+      items.reduce((sum, item) => sum + item.discounted_total, 0),
+    );
+
+    const discountAmount = roundMoney(
+      originalSubtotal - discountedSubtotal,
+    );
+
+    // Shipping is based on the ORIGINAL order value.
+    const matchingTier = shippingFees.find(
+      (tier) =>
+        originalSubtotal >= tier.min &&
+        originalSubtotal <= tier.max,
+    );
+
+    const shippingCharge =
+      deliveryMethod === DeliveryMethod.SHIPPING
+        ? matchingTier?.fee ?? 0
+        : 0;
+
+    return {
+      promo_code: normalizedPromoCode || null,
+      items,
+      original_subtotal: originalSubtotal,
+      discount_amount: discountAmount,
+      discounted_subtotal: discountedSubtotal,
+      shipping_charge: shippingCharge,
+    };
+  }
   async initializeCheckout(
     userId: string,
     accountType: AccountType,
@@ -138,9 +245,30 @@ export class CartService {
       throw new NotFoundException('Your cart is empty');
     }
 
-    const subtotal = cartItems.reduce((sum, item) => {
-      return sum + Number(item.total || 0);
-    }, 0);
+   const originalPrices = await Promise.all(
+  cartItems.map(async (item) => {
+    const product = await this.zohoInventoryService.getInventoryItem(
+      item.itemId,
+    );
+
+    if (!product) {
+      throw new BadRequestException('A product in your cart is unavailable');
+    }
+
+    const pricedProduct = generatePriceByAccountType(accountType)(product);
+if (
+  !Number.isFinite(pricedProduct.price.amount) ||
+  pricedProduct.price.amount < 0
+) {
+  throw new BadRequestException('Invalid product price');
+}
+    return Math.round(pricedProduct.price.amount * 100) / 100 * item.quantity;
+  }),
+);
+
+const subtotal = Math.round(
+  originalPrices.reduce((sum, amount) => sum + amount, 0) * 100,
+) / 100;
 const normalizedPromoCode = promoCode?.trim().toUpperCase();
 
 if (
