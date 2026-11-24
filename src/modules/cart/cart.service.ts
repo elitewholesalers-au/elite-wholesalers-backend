@@ -26,7 +26,7 @@ function isEliteAlarmsProduct(product: {
   category_name?: string;
 }): boolean {
   return (
-    product.brand?.trim().toUpperCase() === 'ELITE ALARMS' &&
+    product.brand?.trim().toUpperCase() === 'ELITE ALARMS' ||
     product.category_name?.trim().toUpperCase() === 'ELITE ALARMS'
   );
 }
