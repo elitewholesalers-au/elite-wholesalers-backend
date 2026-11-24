@@ -228,7 +228,7 @@ if (
       const salesOrder =
         await this.zohoInventoryService.createSalesOrder(salesOrderPayload);
       const salesOrderId: string = salesOrder.salesorder_id;
-      const paymentDetails = this.commerceService.pay(userId, salesOrderId);
+      const paymentDetails = await this.commerceService.pay(userId, salesOrderId);
       await this.cartRepository.delete({ userId: userId });
       return paymentDetails;
     } catch (error) {
