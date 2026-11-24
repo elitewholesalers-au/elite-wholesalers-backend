@@ -107,6 +107,7 @@ export class CartService {
     userId: string,
     accountType: AccountType,
     deliveryMethod: DeliveryMethod,
+    promoCode?: string,
   ) {
     // 1. Fetch user and verify Zoho sync
     const user = await this.userService.findOne({ id: userId });
