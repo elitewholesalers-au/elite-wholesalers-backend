@@ -169,12 +169,11 @@ if (
     const product = await this.zohoInventoryService.getInventoryItem(
       item.itemId,
     );
-
     if (
-      !product ||
-      product.status !== 'active' ||
-      !product.can_be_sold
-    ) {
+  !product ||
+  product.status?.toLowerCase() !== 'active' ||
+  !product.can_be_sold
+) {
       throw new BadRequestException(
         'A product in your cart is no longer available for sale',
       );
