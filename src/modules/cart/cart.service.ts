@@ -218,6 +218,12 @@ export class CartService {
         ? matchingTier?.fee ?? 0
         : 0;
 
+    // Prices and shipping are GST-exclusive. Calculate GST for the
+    // read-only preview; Zoho remains responsible for actual order tax.
+    const subtotalExGst = roundMoney(discountedSubtotal + shippingCharge);
+    const gstAmount = roundMoney(subtotalExGst * 0.10);
+    const totalIncGst = roundMoney(subtotalExGst + gstAmount);
+
     return {
       promo_code: normalizedPromoCode || null,
       items,
@@ -225,6 +231,9 @@ export class CartService {
       discount_amount: discountAmount,
       discounted_subtotal: discountedSubtotal,
       shipping_charge: shippingCharge,
+      subtotal_ex_gst: subtotalExGst,
+      gst_amount: gstAmount,
+      total_inc_gst: totalIncGst,
     };
   }
   async initializeCheckout(
