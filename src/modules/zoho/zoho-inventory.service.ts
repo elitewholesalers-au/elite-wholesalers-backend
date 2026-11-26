@@ -1,4 +1,5 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+
+import { BadRequestException, Injectable, ServiceUnavailableException } from '@nestjs/common';
 import { ZohoService } from './zoho.service';
 import { ZohoApiClient } from './zoho-api.util';
 import { categoriesData } from './custom-data';
@@ -28,6 +29,7 @@ export class ZohoInventoryService {
       '/store/api/v1',
       'CommerceAPI',
     );
+
     this.storeFrontApi = axios.create({
       baseURL: 'https://commerce.zoho.com/storefront/api/v1',
       timeout: 10000,
@@ -37,6 +39,26 @@ export class ZohoInventoryService {
         'domain-name': 'elitewholesalers.zohoecommerce.com',
       },
     });
+  }
+
+  /**
+   * Prevent sales order and invoice writes unless
+   * explicitly enabled in the environment.
+   *
+   * Staging:
+   * ZOHO_ORDER_CREATION_ENABLED=false
+   *
+   * Production:
+   * ZOHO_ORDER_CREATION_ENABLED=true
+   *
+   * Missing or unexpected values are treated as disabled.
+   */
+  private assertZohoOrderCreationEnabled(): void {
+    if (process.env.ZOHO_ORDER_CREATION_ENABLED !== 'true') {
+      throw new ServiceUnavailableException(
+        'Zoho sales order and invoice operations are disabled in this environment.',
+      );
+    }
   }
 
   async createCustomer(data: CreateContactDto): Promise<any> {
@@ -95,6 +117,7 @@ export class ZohoInventoryService {
     const payload = {
       custom_fields: [{ label: 'show_product_specs', value: false }],
     };
+
     return await this.inventoryApi.put(
       `/item/${productId}/customfields`,
       payload,
@@ -107,12 +130,14 @@ export class ZohoInventoryService {
   }
 
   async createSalesOrder(data: InvoicePayload) {
+    this.assertZohoOrderCreationEnabled();
+
     const { salesorder } = await this.inventoryApi.post('/salesorders', data);
     return salesorder;
   }
 
   async findUserOrders(customer_id: string) {
-    const { salesorders } = await this.inventoryApi.get(`/salesorders/`, {
+    const { salesorders } = await this.inventoryApi.get('/salesorders/', {
       params: { customer_id },
     });
     return salesorders;
@@ -126,10 +151,13 @@ export class ZohoInventoryService {
   }
 
   async createInvoice(data: InvoicePayload) {
+    this.assertZohoOrderCreationEnabled();
+
     const { invoice } = await this.inventoryApi.post('/invoices', data, {
       headers: { 'Content-Type': 'application/json' },
       params: { send: true },
     });
+
     return invoice;
   }
 
@@ -139,17 +167,23 @@ export class ZohoInventoryService {
   }
 
   async updateInvoice(invoiceId: string, data: object) {
+    this.assertZohoOrderCreationEnabled();
+
     const { invoice } = await this.inventoryApi.put(
       `/invoices/${invoiceId}`,
       data,
     );
+
     return invoice;
   }
 
   async markInvoiceAsSent(invoiceId: string) {
+    this.assertZohoOrderCreationEnabled();
+
     const { invoice } = await this.inventoryApi.post(
       `/invoices/${invoiceId}/status/sent`,
     );
+
     return invoice;
   }
 
@@ -166,6 +200,7 @@ export class ZohoInventoryService {
         },
       },
     );
+
     return data.items.filter((item) => item.show_in_storefront === true);
   }
 
@@ -198,6 +233,7 @@ export class ZohoInventoryService {
         include_root_category: false,
       },
     });
+
     return categories.filter((item) => item.visibility === true);
   }
 
@@ -229,6 +265,7 @@ export class ZohoInventoryService {
     if (product && shortDesc) {
       product.description = shortDesc;
     }
+
     return product;
   }
 
@@ -240,6 +277,7 @@ export class ZohoInventoryService {
         include_root_category: false,
       },
     });
+
     const activeCategories = categories.filter(
       (category) =>
         category.parent_category_id === '-1' &&
@@ -267,6 +305,7 @@ export class ZohoInventoryService {
       (category) =>
         category.parent_category_id === categoryId && category.visibility,
     );
+
     const parentCategory = categories.find(
       (category) => category.category_id === categoryId,
     );
@@ -291,6 +330,7 @@ export class ZohoInventoryService {
         const has_sub_categories = categories.some(
           (cat) => cat.parent_category_id === subCat.category_id,
         );
+
         return {
           ...subCat,
           has_sub_categories,
@@ -307,17 +347,19 @@ export class ZohoInventoryService {
     if (category && Array.isArray(category.children)) {
       category.children = category.children.filter((child) => child.visibility);
     }
+
     return category;
   }
 
   async getProductsByCategoryId(categoryId?: string, params?: ProductQueryDto) {
-    const { items: products } = await this.inventoryApi.get(`/items/`, {
+    const { items: products } = await this.inventoryApi.get('/items/', {
       params: {
         filter_by: 'Status.Active',
         ...params,
         category_id: categoryId,
       },
     });
+
     return products.filter(
       (product: ProductEntity) => product.show_in_storefront === true,
     );
