@@ -1,3 +1,4 @@
+
 {
   "name": "elite-wholesalers-api",
   "version": "0.0.1",
@@ -18,7 +19,7 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
-    "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
+    "test:debug": "node --inspect-brk -r tsconfig-paths/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json"
   },
   "dependencies": {
@@ -53,6 +54,7 @@
     "resend": "^6.9.2",
     "rxjs": "^7.8.2",
     "sharp": "^0.34.5",
+    "stripe": "^20.0.0",
     "typeorm": "^0.3.28"
   },
   "devDependencies": {
