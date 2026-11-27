@@ -33,8 +33,17 @@ export class PaymentFirstCheckoutService {
     deliveryMethod: DeliveryMethod,
     promoCode?: string,
   ): Promise<CheckoutPayment> {
-    // This feature must remain disabled until we
-    // explicitly approve staging payment tests.
+    // Explicit staging-only safety lock.
+    // Railway must have APP_ENV=staging.
+    if (
+      this.configService.get<string>('APP_ENV') !== 'staging'
+    ) {
+      throw new ServiceUnavailableException(
+        'Payment preparation is restricted to staging',
+      );
+    }
+
+    // Feature must be explicitly enabled.
     if (
       this.configService.get<string>(
         'PAYMENT_FIRST_CHECKOUT_ENABLED',
@@ -45,14 +54,13 @@ export class PaymentFirstCheckoutService {
       );
     }
 
-    // Do not allow this service to operate
-    // with a live Stripe secret key.
+    // Never allow a live Stripe key in this test flow.
     const stripeKey =
       this.configService.get<string>('STRIPE_SECRET_KEY');
 
     if (!stripeKey || !stripeKey.startsWith('sk_test_')) {
       throw new ServiceUnavailableException(
-        'Payment-first checkout requires Stripe test mode',
+        'Payment preparation requires Stripe test mode',
       );
     }
 
@@ -62,8 +70,7 @@ export class PaymentFirstCheckoutService {
       );
     }
 
-    // Recalculate all prices on the backend.
-    // Never trust totals provided by the browser.
+    // Calculate prices on the backend.
     const preview = await this.cartService.previewCheckout(
       userId,
       accountType,
@@ -160,6 +167,8 @@ export class PaymentFirstCheckoutService {
       failureReason: null,
     });
 
+    // Save only to the database configured for
+    // this running backend instance.
     return await this.paymentRepository.save(payment);
   }
 }
