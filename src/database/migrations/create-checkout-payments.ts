@@ -46,6 +46,26 @@ async function run(): Promise<void> {
   try {
     await dataSource.initialize();
 
+    /**
+     * Additional staging safety verification.
+     *
+     * The environment_safety record must exist in the
+     * staging database before this migration can proceed.
+     */
+    const safetyRecords: Array<{ environment_name: string }> =
+      await dataSource.query(`
+        SELECT environment_name
+        FROM public.environment_safety
+        WHERE environment_name = 'elite-wholesalers-staging'
+      `);
+
+    if (safetyRecords.length !== 1) {
+      throw new Error(
+        'Migration blocked: staging safety identifier not found.',
+      );
+    }
+
+    console.log('Staging database safety identifier verified.');
     console.log('Connected to verified staging database.');
 
     await dataSource.query(`
