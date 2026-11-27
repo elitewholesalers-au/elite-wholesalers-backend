@@ -1,3 +1,4 @@
+
 import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -16,19 +17,21 @@ import { AuthModule } from './modules/auth/auth.module';
 import { UserModule } from './modules/user/user.module';
 import { ProductsModule } from './modules/products/products.module';
 import { UtilsModule } from './modules/utils/utils.module';
+import { CommerceModule } from './modules/commerce/commerce.module';
+import { ZohoModule } from './modules/zoho/zoho.module';
+import { CartModule } from './modules/cart/cart.module';
+import { PaymentsModule } from './modules/payments/payments.module';
+import { AdminModule } from './modules/admin/admin.module';
+import { FirmwareModule } from './modules/firmware/firmware.module';
 
 /* SERVICES */
 import { EmailModule } from './services/emails/email.module';
 import { FileManagerModule } from './services/file-manager/file-manager.module';
 import { DatabaseModule } from './services/database/database.module';
 import { JsonWebTokenModule } from './services/json-web-token/json-web-token.module';
-import { CommerceModule } from './modules/commerce/commerce.module';
-import { ZohoModule } from './modules/zoho/zoho.module';
-import { CartModule } from './modules/cart/cart.module';
-import { AdminModule } from './modules/admin/admin.module';
-import { FirmwareModule } from './modules/firmware/firmware.module';
-import { createObserveModule } from '@nestjs/observe';
 import { JobsModule } from './services/jobs/jobs.module';
+
+import { createObserveModule } from '@nestjs/observe';
 
 export const { ObserveModule, ObserveInstrument } = createObserveModule();
 
@@ -52,6 +55,7 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
     CommerceModule,
     ZohoModule,
     CartModule,
+    PaymentsModule,
     AdminModule,
     FirmwareModule,
     JobsModule,
