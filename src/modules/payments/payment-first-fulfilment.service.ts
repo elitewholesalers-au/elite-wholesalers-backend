@@ -147,11 +147,17 @@ export class PaymentFirstFulfilmentService {
     }
 
     /**
-     * Read the immutable checkout snapshot
-     * associated with the verified payment.
+     * Read the checkout snapshot associated
+     * with the verified Stripe payment.
+     *
+     * The intermediate unknown cast resolves
+     * TypeScript error TS2352.
+     *
+     * Runtime validation follows below.
      */
     const snapshot =
-      payment.orderSnapshot as CheckoutSnapshot | null;
+      payment.orderSnapshot as unknown as
+        CheckoutSnapshot | null;
 
     if (
       !snapshot ||
