@@ -1,3 +1,4 @@
+
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config'; // 1. Import Config tools
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -17,7 +18,7 @@ import { Cart } from '../../modules/cart/entities/cart.entity';
         url: configService.get<string>('DATABASE_URL'),
         autoLoadEntities: true,
         entities: [User, Verification, Product, Cart],
-        synchronize: true,
+        synchronize: false,
         dropSchema: false,
         logging: false,
         ssl: {
