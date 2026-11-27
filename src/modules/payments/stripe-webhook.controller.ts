@@ -14,6 +14,7 @@ import { ConfigService } from '@nestjs/config';
 import Stripe from 'stripe';
 
 import { Public } from '../../common/decorators';
+import { StripePaymentVerificationService } from './stripe-payment-verification.service';
 
 interface StripeWebhookRequest {
   rawBody?: Buffer;
@@ -26,7 +27,11 @@ export class StripeWebhookController {
     StripeWebhookController.name,
   );
 
-  constructor(private readonly configService: ConfigService) {
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly paymentVerificationService:
+      StripePaymentVerificationService,
+  ) {
     const secretKey =
       this.configService.get<string>('STRIPE_SECRET_KEY');
 
@@ -82,8 +87,10 @@ export class StripeWebhookController {
     }
 
     switch (event.type) {
-      case 'checkout.session.completed': {
-        const session = event.data.object as Stripe.Checkout.Session;
+      case 'checkout.session.completed':
+      case 'checkout.session.async_payment_succeeded': {
+        const session =
+          event.data.object as Stripe.Checkout.Session;
 
         if (session.payment_status !== 'paid') {
           this.logger.log(
@@ -92,47 +99,38 @@ export class StripeWebhookController {
           break;
         }
 
-        if (session.currency?.toLowerCase() !== 'aud') {
-          this.logger.warn(
-            `Rejected non-AUD checkout session ${session.id}`,
-          );
-          break;
-        }
-
         if (
-          !Number.isSafeInteger(session.amount_total) ||
-          (session.amount_total ?? 0) <= 0
+          this.configService.get<string>(
+            'STRIPE_PAYMENT_VERIFICATION_ENABLED',
+          ) !== 'true'
         ) {
-          this.logger.warn(
-            `Rejected invalid checkout amount for ${session.id}`,
+          this.logger.log(
+            `Payment verification disabled for ${session.id}`,
           );
           break;
         }
 
-        const paymentId =
-          session.metadata?.checkout_payment_id;
+        const verified =
+          await this.paymentVerificationService
+            .verifySuccessfulPayment(session.id);
 
-        if (
-          !paymentId ||
-          paymentId !== session.client_reference_id
-        ) {
+        if (!verified) {
           this.logger.warn(
-            `Rejected checkout session ${session.id}: payment reference mismatch`,
+            `Payment verification failed for ${session.id}`,
           );
-          break;
+
+          throw new ServiceUnavailableException(
+            'Stripe payment verification was not completed',
+          );
         }
 
-        // Do not mark the payment as paid yet.
-        // Database record matching and amount verification
-        // will be implemented in the payment verification service.
         this.logger.log(
-          `Received paid Stripe session ${session.id} for payment ${paymentId}; database verification pending`,
+          `Stripe payment verified for ${session.id}`,
         );
 
         break;
       }
 
-      case 'checkout.session.async_payment_succeeded':
       case 'checkout.session.async_payment_failed':
       case 'checkout.session.expired':
         this.logger.log(
