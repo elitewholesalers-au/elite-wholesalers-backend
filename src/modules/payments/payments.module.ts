@@ -4,6 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { CheckoutPayment } from './entities/checkout-payment.entity';
 import { StripePaymentService } from './stripe-payment.service';
+import { StripePaymentVerificationService } from './stripe-payment-verification.service';
 import { StripeWebhookController } from './stripe-webhook.controller';
 
 import { ZohoModule } from '../zoho/zoho.module';
@@ -16,10 +17,14 @@ import { UserModule } from '../user/user.module';
     UserModule,
   ],
   controllers: [StripeWebhookController],
-  providers: [StripePaymentService],
+  providers: [
+    StripePaymentService,
+    StripePaymentVerificationService,
+  ],
   exports: [
     TypeOrmModule,
     StripePaymentService,
+    StripePaymentVerificationService,
   ],
 })
 export class PaymentsModule {}
