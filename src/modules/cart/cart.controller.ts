@@ -1,3 +1,4 @@
+
 import {
   Controller,
   Get,
@@ -7,6 +8,7 @@ import {
   Param,
   Delete,
   Req,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import { CartService } from './cart.service';
 import { CreateCartDto, DeliveryMethodDto } from './dto/create-cart.dto';
@@ -29,7 +31,8 @@ export class CartController {
     const zohoContactId = req.user?.zohoContactId;
     return await this.cartService.addToCart(userId, zohoContactId, dto);
   }
- @Post('/checkout/preview')
+
+  @Post('/checkout/preview')
   @ApiOperation({
     summary: 'Preview checkout totals without creating a Zoho order',
   })
@@ -48,6 +51,7 @@ export class CartController {
       deliveryMethodDto.promo_code,
     );
   }
+
   @Post('/checkout')
   @ApiOperation({
     summary: 'Initialize checkout for all items in the user cart',
@@ -57,16 +61,23 @@ export class CartController {
     description: 'Checkout initialized successfully.',
   })
   @ApiResponse({ status: 404, description: 'Cart is empty.' })
-  @ApiResponse({ status: 500, description: 'Zoho sync or generation failure.' })
+  @ApiResponse({ status: 503, description: 'Checkout temporarily unavailable.' })
   async checkout(
     @Req() req: IRequest,
     @Body() deliveryMethodDto: DeliveryMethodDto,
   ) {
+    // Never allow the legacy Zoho-first checkout in staging.
+    if (process.env.ZOHO_ORDER_CREATION_ENABLED !== 'true') {
+      throw new ServiceUnavailableException(
+        'Checkout is temporarily unavailable while secure payments are being configured.',
+      );
+    }
+
     return await this.cartService.initializeCheckout(
-  req.user.id,
-  req.user.accountType,
-  deliveryMethodDto.delivery_method,
-  deliveryMethodDto.promo_code,
+      req.user.id,
+      req.user.accountType,
+      deliveryMethodDto.delivery_method,
+      deliveryMethodDto.promo_code,
     );
   }
 
