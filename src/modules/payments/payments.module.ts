@@ -6,6 +6,7 @@ import { CheckoutPayment } from './entities/checkout-payment.entity';
 import { StripePaymentService } from './stripe-payment.service';
 import { StripePaymentVerificationService } from './stripe-payment-verification.service';
 import { StripeWebhookController } from './stripe-webhook.controller';
+import { PaymentFirstFulfilmentService } from './payment-first-fulfilment.service';
 
 import { ZohoModule } from '../zoho/zoho.module';
 import { UserModule } from '../user/user.module';
@@ -16,15 +17,19 @@ import { UserModule } from '../user/user.module';
     ZohoModule,
     UserModule,
   ],
-  controllers: [StripeWebhookController],
+  controllers: [
+    StripeWebhookController,
+  ],
   providers: [
     StripePaymentService,
     StripePaymentVerificationService,
+    PaymentFirstFulfilmentService,
   ],
   exports: [
     TypeOrmModule,
     StripePaymentService,
     StripePaymentVerificationService,
+    PaymentFirstFulfilmentService,
   ],
 })
 export class PaymentsModule {}
