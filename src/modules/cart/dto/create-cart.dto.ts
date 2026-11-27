@@ -1,3 +1,4 @@
+
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
@@ -15,8 +16,6 @@ import { DeliveryMethod } from '../../user/dto/create-user.dto';
 
 export enum Currency {
   AUD = 'AUD',
-  USD = 'USD',
-  NGN = 'NGN',
 }
 
 export class PriceDto {
@@ -62,7 +61,7 @@ export class DeliveryMethodDto {
   @IsEnum(DeliveryMethod)
   delivery_method: DeliveryMethod;
 
-    @ApiProperty({
+  @ApiProperty({
     required: false,
     example: 'WEEKLY20',
     description: 'Optional promotional discount code',
