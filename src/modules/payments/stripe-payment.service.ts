@@ -10,6 +10,7 @@ import Stripe from 'stripe';
 @Injectable()
 export class StripePaymentService {
   private readonly stripe: Stripe;
+  private readonly isTestMode: boolean;
 
   constructor(private readonly configService: ConfigService) {
     const secretKey =
@@ -18,6 +19,8 @@ export class StripePaymentService {
     if (!secretKey) {
       throw new Error('STRIPE_SECRET_KEY is not configured');
     }
+
+    this.isTestMode = secretKey.startsWith('sk_test_');
 
     this.stripe = new Stripe(secretKey);
   }
@@ -28,8 +31,8 @@ export class StripePaymentService {
     successUrl: string,
     cancelUrl: string,
   ): Promise<Stripe.Checkout.Session> {
-    // Payment creation is disabled until the complete
-    // payment-first checkout workflow is implemented.
+    // Keep Stripe Checkout disabled until the
+    // payment-first workflow is fully implemented.
     if (
       this.configService.get<string>(
         'STRIPE_CHECKOUT_ENABLED',
@@ -40,9 +43,10 @@ export class StripePaymentService {
       );
     }
 
-    if (!this.stripe.getApiField('key')?.startsWith('sk_test_')) {
+    // Only allow Stripe test-mode payments at this stage.
+    if (!this.isTestMode) {
       throw new ServiceUnavailableException(
-        'This checkout service currently permits test-mode Stripe only',
+        'Only Stripe test-mode payments are permitted',
       );
     }
 
