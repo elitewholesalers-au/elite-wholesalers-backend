@@ -1,3 +1,4 @@
+
 export interface ProductTaxCategory {
   tax_category_code: string;
   tax_category_name: string;
@@ -150,11 +151,11 @@ export interface ProductCustomField {
   index: number;
   label: string;
   show_on_pdf: boolean;
+  show_in_all_pdf: boolean;
   is_custom_field: boolean;
   edit_on_portal: boolean;
   edit_on_store: boolean;
   api_name: string;
-  show_in_all_pdf: boolean;
   value_formatted: string;
   search_entity: string;
   data_type: string;
@@ -199,8 +200,6 @@ export interface ProductLocation {
   location_actual_available_for_sale_stock: number;
   location_quantity_in_transit: number;
   serial_numbers: unknown[];
-  serial_number_details: unknown[];
-  is_general_location: boolean;
   sales_channels: unknown[];
 }
 
@@ -304,7 +303,7 @@ export interface CategoryEntity {
   last_modified_time: string;
   visibility: boolean;
   documents: DocumentItem[];
-  custom_fields: any[]; // Or define a specific type if you have custom field data
+  custom_fields: any[];
   description: string;
   show_in_menu: boolean;
   ondc_category_type: string;
@@ -371,11 +370,23 @@ export interface CustomerEntity {
   customer_name: string;
 }
 
-interface InvoicePayload {
+/**
+ * Zoho Inventory sales order and invoice payload.
+ *
+ * Optional fields support payment-first checkout while
+ * preserving compatibility with existing integrations.
+ */
+export interface InvoicePayload {
   customer_id: string;
+
+  reference_number?: string;
+
   line_items: {
     item_id: string;
     quantity: number;
     rate: number;
+    tax_id?: string;
   }[];
+
+  shipping_charge?: number;
 }
