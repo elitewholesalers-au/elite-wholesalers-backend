@@ -10,11 +10,13 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { RawBodyRequest } from '@nestjs/common';
-import { Request } from 'express';
 import Stripe from 'stripe';
 
 import { Public } from '../../common/decorators';
+
+interface StripeWebhookRequest {
+  rawBody?: Buffer;
+}
 
 @Controller('payments/stripe')
 export class StripeWebhookController {
@@ -35,7 +37,7 @@ export class StripeWebhookController {
   @Post('webhook')
   @HttpCode(HttpStatus.OK)
   async handleWebhook(
-    @Req() request: RawBodyRequest<Request>,
+    @Req() request: StripeWebhookRequest,
     @Headers('stripe-signature') signature?: string,
   ) {
     const webhookSecret =
@@ -67,16 +69,14 @@ export class StripeWebhookController {
       );
     }
 
-    // Staging must never process live-mode Stripe events.
     if (event.livemode) {
       throw new BadRequestException(
         'Live Stripe events are not permitted',
       );
     }
 
-    // No payment records are modified at this stage.
-    // Payment verification and database updates will
-    // be implemented in the next step.
+    // Signature verification only.
+    // Do not update payments or create Zoho orders yet.
 
     return {
       received: true,
