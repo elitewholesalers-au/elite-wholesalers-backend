@@ -1,12 +1,16 @@
 
 import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+
 import { CartService } from './cart.service';
 import { CartController } from './cart.controller';
+import { Cart } from './entities/cart.entity';
+
+import { CheckoutPayment } from '../payments/entities/checkout-payment.entity';
+import { PaymentsModule } from '../payments/payments.module';
+
 import { ZohoModule } from '../zoho/zoho.module';
 import { UserModule } from '../user/user.module';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { Cart } from './entities/cart.entity';
-import { CheckoutPayment } from '../payments/entities/checkout-payment.entity';
 import { CommerceModule } from '../commerce/commerce.module';
 
 @Module({
@@ -14,7 +18,11 @@ import { CommerceModule } from '../commerce/commerce.module';
     ZohoModule,
     UserModule,
     CommerceModule,
-    TypeOrmModule.forFeature([Cart, CheckoutPayment]),
+    PaymentsModule,
+    TypeOrmModule.forFeature([
+      Cart,
+      CheckoutPayment,
+    ]),
   ],
   controllers: [CartController],
   providers: [CartService],
