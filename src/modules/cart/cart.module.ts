@@ -4,8 +4,9 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { CartService } from './cart.service';
 import { CartController } from './cart.controller';
-import { Cart } from './entities/cart.entity';
+import { PaymentFirstCheckoutService } from './payment-first-checkout.service';
 
+import { Cart } from './entities/cart.entity';
 import { CheckoutPayment } from '../payments/entities/checkout-payment.entity';
 import { PaymentsModule } from '../payments/payments.module';
 
@@ -25,6 +26,9 @@ import { CommerceModule } from '../commerce/commerce.module';
     ]),
   ],
   controllers: [CartController],
-  providers: [CartService],
+  providers: [
+    CartService,
+    PaymentFirstCheckoutService,
+  ],
 })
 export class CartModule {}
