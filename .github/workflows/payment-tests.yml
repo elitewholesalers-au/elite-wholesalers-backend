@@ -8,6 +8,7 @@ on:
       - weekly-deals
     paths:
       - 'src/modules/payments/**'
+      - 'src/modules/zoho/**'
       - '.github/workflows/payment-tests.yml'
 
 permissions:
@@ -15,7 +16,7 @@ permissions:
 
 jobs:
   payment-tests:
-    name: Run Payment Fulfilment Tests
+    name: Run Payment and Zoho Reconciliation Tests
     runs-on: ubuntu-latest
 
     steps:
@@ -31,5 +32,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run fulfilment unit tests
-        run: npx jest --runInBand --runTestsByPath src/modules/payments/payment-first-fulfilment.service.spec.ts
+      - name: Run payment and Zoho reconciliation tests
+        run: |
+          npx jest --runInBand --runTestsByPath \
+            src/modules/payments/payment-first-fulfilment.service.spec.ts \
+            src/modules/zoho/zoho-inventory.service.spec.ts
