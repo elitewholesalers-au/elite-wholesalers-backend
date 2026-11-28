@@ -1,6 +1,7 @@
 
 import {
   Injectable,
+  Optional,
   BadRequestException,
   ConflictException,
   NotFoundException,
@@ -9,7 +10,9 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+
 import { CheckoutPayment } from './entities/checkout-payment.entity';
+import { ZohoInventoryService } from '../zoho/zoho-inventory.service';
 
 interface CheckoutSnapshotItem {
   item_id: string;
@@ -33,6 +36,9 @@ export class PaymentFirstFulfilmentService {
 
     @InjectRepository(CheckoutPayment)
     private readonly paymentRepository: Repository<CheckoutPayment>,
+
+    @Optional()
+    private readonly zohoInventoryService?: ZohoInventoryService,
   ) {}
 
   /**
@@ -358,6 +364,112 @@ export class PaymentFirstFulfilmentService {
   /**
    * STAGING ONLY
    *
+   * Read-only Zoho reconciliation preview.
+   *
+   * Validates the Stripe payment and order snapshot,
+   * then searches Zoho Inventory for an existing
+   * sales order with the exact payment reference.
+   *
+   * No database writes.
+   * No Zoho writes.
+   *
+   * This method is not connected to a controller
+   * or webhook.
+   */
+  async previewZohoReconciliation(paymentId: string) {
+    this.assertStaging();
+
+    const preview =
+      await this.previewZohoSalesOrder(paymentId);
+
+    if (!this.zohoInventoryService) {
+      throw new ServiceUnavailableException(
+        'Zoho Inventory reconciliation service is unavailable',
+      );
+    }
+
+    const customerId =
+      preview.proposed_sales_order.customer_id;
+
+    const referenceNumber =
+      preview.proposed_sales_order.reference_number;
+
+    let reconciliation: Awaited<
+      ReturnType<
+        ZohoInventoryService['reconcileSalesOrderByReference']
+      >
+    >;
+
+    try {
+      reconciliation =
+        await this.zohoInventoryService
+          .reconcileSalesOrderByReference(
+            customerId,
+            referenceNumber,
+          );
+    } catch {
+      throw new ServiceUnavailableException(
+        'Zoho reconciliation could not be completed. Automatic order creation remains blocked.',
+      );
+    }
+
+    if (
+      !reconciliation ||
+      reconciliation.search_complete !== true ||
+      reconciliation.customer_id !== customerId ||
+      reconciliation.reference_number !==
+        referenceNumber ||
+      !Array.isArray(reconciliation.matches) ||
+      reconciliation.match_count !==
+        reconciliation.matches.length ||
+      !Number.isInteger(
+        reconciliation.pages_checked,
+      ) ||
+      reconciliation.pages_checked < 1
+    ) {
+      throw new ServiceUnavailableException(
+        'Zoho reconciliation returned an invalid result. Automatic order creation remains blocked.',
+      );
+    }
+
+    const expectedStatus =
+      reconciliation.match_count === 0
+        ? 'NOT_FOUND'
+        : reconciliation.match_count === 1
+          ? 'FOUND'
+          : 'DUPLICATE';
+
+    if (reconciliation.status !== expectedStatus) {
+      throw new ServiceUnavailableException(
+        'Zoho reconciliation returned an inconsistent status.',
+      );
+    }
+
+    return {
+      mode: 'READ_ONLY_RECONCILIATION',
+      zoho_order_created: false,
+      payment_id: preview.payment_id,
+      payment_status: preview.payment_status,
+      fulfilment_status: preview.fulfilment_status,
+      currency: preview.currency,
+      expected_total_inc_gst:
+        preview.expected_total_inc_gst,
+      proposed_sales_order:
+        preview.proposed_sales_order,
+      reconciliation,
+      existing_order_detected:
+        reconciliation.match_count > 0,
+      duplicate_orders_detected:
+        reconciliation.match_count > 1,
+      automatic_order_creation_enabled: false,
+      warning:
+        'Read-only reconciliation only. No sales order has been created. A NOT_FOUND result is not authorisation to create an order. Live Zoho API response fields, tax, stock and concurrency safeguards still require verification.',
+    };
+  }
+
+  /**
+   * STAGING ONLY
+   *
    * Atomically claim a verified Stripe payment
    * for fulfilment.
    *
@@ -366,9 +478,6 @@ export class PaymentFirstFulfilmentService {
    *
    * Does not contact Zoho.
    * Does not create an order.
-   *
-   * This method is not connected to a controller
-   * or Stripe webhook yet.
    */
   async claimPaymentForFulfilment(paymentId: string) {
     this.assertStaging();
@@ -403,16 +512,12 @@ export class PaymentFirstFulfilmentService {
       );
     }
 
-    /**
-     * Validate the order before claiming it.
-     * This method performs no database writes.
-     */
     await this.previewZohoSalesOrder(paymentId);
 
     /**
      * Atomic conditional update.
      *
-     * PostgreSQL will allow only one concurrent
+     * PostgreSQL allows only one concurrent
      * request to claim this payment.
      *
      * No Zoho API call is made here.
@@ -422,7 +527,8 @@ export class PaymentFirstFulfilmentService {
       .update(CheckoutPayment)
       .set({
         fulfilmentStatus: 'processing',
-        fulfilmentStartedAt: () => 'CURRENT_TIMESTAMP',
+        fulfilmentStartedAt: () =>
+          'CURRENT_TIMESTAMP',
         failureReason: null,
       })
       .where('id = :paymentId', { paymentId })
@@ -433,15 +539,22 @@ export class PaymentFirstFulfilmentService {
         status: 'paid',
       })
       .andWhere('payment_verified_at IS NOT NULL')
-      .andWhere('stripe_checkout_session_id IS NOT NULL')
-      .andWhere('stripe_payment_intent_id IS NOT NULL')
+      .andWhere(
+        'stripe_checkout_session_id IS NOT NULL',
+      )
+      .andWhere(
+        'stripe_payment_intent_id IS NOT NULL',
+      )
       .andWhere('currency = :currency', {
         currency: 'AUD',
       })
       .andWhere('zoho_contact_id IS NOT NULL')
-      .andWhere('fulfilment_status = :fulfilmentStatus', {
-        fulfilmentStatus: 'not_started',
-      })
+      .andWhere(
+        'fulfilment_status = :fulfilmentStatus',
+        {
+          fulfilmentStatus: 'not_started',
+        },
+      )
       .andWhere('zoho_salesorder_id IS NULL')
       .returning([
         'id',
