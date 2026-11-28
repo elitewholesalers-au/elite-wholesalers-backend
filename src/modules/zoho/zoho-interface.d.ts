@@ -390,3 +390,38 @@ export interface InvoicePayload {
 
   shipping_charge?: number;
 }
+
+/**
+ * Zoho Inventory sales order summary.
+ *
+ * Used for read-only payment reconciliation.
+ */
+export interface ZohoSalesOrderSummary {
+  salesorder_id: string;
+  customer_id: string;
+  reference_number?: string;
+  salesorder_number?: string;
+  status?: string;
+  total?: number;
+  currency_code?: string;
+}
+
+/**
+ * Pagination information returned by Zoho Inventory.
+ */
+export interface ZohoPageContext {
+  page: number;
+  per_page: number;
+  has_more_page: boolean;
+}
+
+/**
+ * Zoho Inventory sales order listing response.
+ *
+ * Used to inspect existing sales orders without
+ * creating or modifying Zoho records.
+ */
+export interface ZohoSalesOrderListResponse {
+  salesorders: ZohoSalesOrderSummary[];
+  page_context: ZohoPageContext;
+}
