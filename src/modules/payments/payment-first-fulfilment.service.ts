@@ -2,6 +2,7 @@
 import {
   Injectable,
   BadRequestException,
+  ConflictException,
   NotFoundException,
   ServiceUnavailableException,
 } from '@nestjs/common';
@@ -35,9 +36,21 @@ export class PaymentFirstFulfilmentService {
   ) {}
 
   /**
+   * Restrict development operations to staging.
+   */
+  private assertStaging(): void {
+    if (
+      this.configService.get<string>('APP_ENV') !==
+      'staging'
+    ) {
+      throw new ServiceUnavailableException(
+        'Payment-first fulfilment testing is restricted to staging',
+      );
+    }
+  }
+
+  /**
    * Convert a monetary amount into integer cents.
-   * Reject invalid amounts and values with more
-   * than two decimal places.
    */
   private toCents(
     value: unknown,
@@ -74,21 +87,14 @@ export class PaymentFirstFulfilmentService {
   /**
    * STAGING ONLY
    *
-   * Validates the payment and prepares a read-only
-   * Zoho sales order preview.
+   * Validates a verified Stripe payment and prepares
+   * a read-only Zoho sales order preview.
    *
-   * Does not create a Zoho order.
-   * Does not modify the database.
+   * No database writes.
+   * No Zoho API calls.
    */
   async previewZohoSalesOrder(paymentId: string) {
-    if (
-      this.configService.get<string>('APP_ENV') !==
-      'staging'
-    ) {
-      throw new ServiceUnavailableException(
-        'Payment-first fulfilment preview is restricted to staging',
-      );
-    }
+    this.assertStaging();
 
     if (!paymentId) {
       throw new BadRequestException(
@@ -106,10 +112,6 @@ export class PaymentFirstFulfilmentService {
       );
     }
 
-    /**
-     * Payment must already have been verified
-     * by the Stripe verification workflow.
-     */
     if (
       payment.paymentMethod !== 'stripe' ||
       payment.paymentStatus !== 'paid' ||
@@ -146,15 +148,6 @@ export class PaymentFirstFulfilmentService {
       );
     }
 
-    /**
-     * Read the checkout snapshot associated
-     * with the verified Stripe payment.
-     *
-     * The intermediate unknown cast resolves
-     * TypeScript error TS2352.
-     *
-     * Runtime validation follows below.
-     */
     const snapshot =
       payment.orderSnapshot as unknown as
         CheckoutSnapshot | null;
@@ -169,10 +162,6 @@ export class PaymentFirstFulfilmentService {
       );
     }
 
-    /**
-     * Validate each item and calculate
-     * the expected product subtotal.
-     */
     let calculatedSubtotalCents = 0;
 
     const lineItems = snapshot.items.map(
@@ -238,9 +227,6 @@ export class PaymentFirstFulfilmentService {
       },
     );
 
-    /**
-     * Validate the amount charged for products.
-     */
     const paymentSubtotalCents = this.toCents(
       payment.subtotalExGst,
       'payment.subtotalExGst',
@@ -255,9 +241,6 @@ export class PaymentFirstFulfilmentService {
       );
     }
 
-    /**
-     * Validate shipping, GST and total.
-     */
     const shippingCents = this.toCents(
       payment.shippingExGst,
       'payment.shippingExGst',
@@ -284,10 +267,6 @@ export class PaymentFirstFulfilmentService {
       );
     }
 
-    /**
-     * Cross-check amounts stored in the snapshot
-     * when those fields are available.
-     */
     if (
       snapshot.subtotal_ex_gst !== undefined &&
       this.toCents(
@@ -336,11 +315,6 @@ export class PaymentFirstFulfilmentService {
       );
     }
 
-    /**
-     * Generate a deterministic reference.
-     * The same payment always gets the same
-     * proposed Zoho reference.
-     */
     const referenceNumber = `EWS-${payment.id}`;
 
     const salesOrderPreview = {
@@ -378,6 +352,121 @@ export class PaymentFirstFulfilmentService {
       },
       warning:
         'Read-only staging preview. No Zoho order has been created. Zoho tax application, reference lookup, stock availability and duplicate prevention require further verification.',
+    };
+  }
+
+  /**
+   * STAGING ONLY
+   *
+   * Atomically claim a verified Stripe payment
+   * for fulfilment.
+   *
+   * Only one request can change the payment
+   * from not_started to processing.
+   *
+   * Does not contact Zoho.
+   * Does not create an order.
+   *
+   * This method is not connected to a controller
+   * or Stripe webhook yet.
+   */
+  async claimPaymentForFulfilment(paymentId: string) {
+    this.assertStaging();
+
+    if (!paymentId) {
+      throw new BadRequestException(
+        'Payment ID is required',
+      );
+    }
+
+    const payment = await this.paymentRepository.findOne({
+      where: { id: paymentId },
+    });
+
+    if (!payment) {
+      throw new NotFoundException(
+        'Checkout payment was not found',
+      );
+    }
+
+    if (
+      payment.paymentMethod !== 'stripe' ||
+      payment.paymentStatus !== 'paid' ||
+      !payment.paymentVerifiedAt ||
+      !payment.stripeCheckoutSessionId ||
+      !payment.stripePaymentIntentId ||
+      payment.currency !== 'AUD' ||
+      !payment.zohoContactId
+    ) {
+      throw new BadRequestException(
+        'Payment is not eligible for fulfilment',
+      );
+    }
+
+    /**
+     * Validate the order before claiming it.
+     * This method performs no database writes.
+     */
+    await this.previewZohoSalesOrder(paymentId);
+
+    /**
+     * Atomic conditional update.
+     *
+     * PostgreSQL will allow only one concurrent
+     * request to claim this payment.
+     *
+     * No Zoho API call is made here.
+     */
+    const result = await this.paymentRepository
+      .createQueryBuilder()
+      .update(CheckoutPayment)
+      .set({
+        fulfilmentStatus: 'processing',
+        fulfilmentStartedAt: () => 'CURRENT_TIMESTAMP',
+        failureReason: null,
+      })
+      .where('id = :paymentId', { paymentId })
+      .andWhere('payment_method = :method', {
+        method: 'stripe',
+      })
+      .andWhere('payment_status = :status', {
+        status: 'paid',
+      })
+      .andWhere('payment_verified_at IS NOT NULL')
+      .andWhere('stripe_checkout_session_id IS NOT NULL')
+      .andWhere('stripe_payment_intent_id IS NOT NULL')
+      .andWhere('currency = :currency', {
+        currency: 'AUD',
+      })
+      .andWhere('zoho_contact_id IS NOT NULL')
+      .andWhere('fulfilment_status = :fulfilmentStatus', {
+        fulfilmentStatus: 'not_started',
+      })
+      .andWhere('zoho_salesorder_id IS NULL')
+      .returning([
+        'id',
+        'payment_status',
+        'fulfilment_status',
+        'fulfilment_started_at',
+        'zoho_salesorder_id',
+      ])
+      .execute();
+
+    if (result.affected !== 1) {
+      throw new ConflictException(
+        'Payment fulfilment has already started or is no longer eligible',
+      );
+    }
+
+    return {
+      mode: 'STAGING_LOCK_TEST',
+      payment_id: paymentId,
+      claimed: true,
+      fulfilment_status: 'processing',
+      zoho_order_created: false,
+      result: result.raw[0],
+      warning:
+        'Staging database claim only. No Zoho sales order was created. Do not automatically reset or retry processing payments without reconciliation.',
     };
   }
 }
