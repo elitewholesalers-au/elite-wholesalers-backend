@@ -1,5 +1,9 @@
 
-import { BadRequestException, Injectable, ServiceUnavailableException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { ZohoService } from './zoho.service';
 import { ZohoApiClient } from './zoho-api.util';
 import { categoriesData } from './custom-data';
@@ -8,6 +12,8 @@ import type {
   CustomerEntity,
   InvoicePayload,
   ProductEntity,
+  ZohoSalesOrderListResponse,
+  ZohoSalesOrderSummary,
 } from './zoho-interface';
 import { ProductQueryDto } from '../products/dto/create-product.dto';
 import { CreateContactDto } from './dto/create-zoho-user.dto';
@@ -42,16 +48,8 @@ export class ZohoInventoryService {
   }
 
   /**
-   * Prevent sales order and invoice writes unless
-   * explicitly enabled in the environment.
-   *
-   * Staging:
-   * ZOHO_ORDER_CREATION_ENABLED=false
-   *
-   * Production:
-   * ZOHO_ORDER_CREATION_ENABLED=true
-   *
-   * Missing or unexpected values are treated as disabled.
+   * Disable sales order and invoice writes unless
+   * explicitly enabled.
    */
   private assertZohoOrderCreationEnabled(): void {
     if (process.env.ZOHO_ORDER_CREATION_ENABLED !== 'true') {
@@ -62,16 +60,26 @@ export class ZohoInventoryService {
   }
 
   async createCustomer(data: CreateContactDto): Promise<any> {
-    const { contact } = await this.inventoryApi.post('/contacts', data, {
-      headers: { 'Content-Type': 'application/json' },
-    });
+    const { contact } = await this.inventoryApi.post(
+      '/contacts',
+      data,
+      {
+        headers: { 'Content-Type': 'application/json' },
+      },
+    );
+
     return contact;
   }
 
-  async getCustomerByEmail(data: { email: string }): Promise<CustomerEntity[]> {
-    const { contacts } = await this.inventoryApi.get('/contacts', {
-      params: data,
-    });
+  async getCustomerByEmail(
+    data: { email: string },
+  ): Promise<CustomerEntity[]> {
+    const { contacts } = await this.inventoryApi.get(
+      '/contacts',
+      {
+        params: data,
+      },
+    );
 
     return contacts;
   }
@@ -87,13 +95,17 @@ export class ZohoInventoryService {
         headers: { 'Content-Type': 'application/json' },
       },
     );
+
     return contact;
   }
 
   async deleteCustomer(userContactId: string): Promise<any> {
-    return await this.inventoryApi.delete(`/contacts/${userContactId}`, {
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return await this.inventoryApi.delete(
+      `/contacts/${userContactId}`,
+      {
+        headers: { 'Content-Type': 'application/json' },
+      },
+    );
   }
 
   async uploadProductSpecs(
@@ -115,7 +127,9 @@ export class ZohoInventoryService {
 
   async clearProductSpecs(productId: string): Promise<any> {
     const payload = {
-      custom_fields: [{ label: 'show_product_specs', value: false }],
+      custom_fields: [
+        { label: 'show_product_specs', value: false },
+      ],
     };
 
     return await this.inventoryApi.put(
@@ -125,21 +139,32 @@ export class ZohoInventoryService {
   }
 
   async getCustomer(contactId: string): Promise<any> {
-    const { contact } = await this.inventoryApi.get(`/contacts/${contactId}`);
+    const { contact } = await this.inventoryApi.get(
+      `/contacts/${contactId}`,
+    );
+
     return contact;
   }
 
   async createSalesOrder(data: InvoicePayload) {
     this.assertZohoOrderCreationEnabled();
 
-    const { salesorder } = await this.inventoryApi.post('/salesorders', data);
+    const { salesorder } = await this.inventoryApi.post(
+      '/salesorders',
+      data,
+    );
+
     return salesorder;
   }
 
   async findUserOrders(customer_id: string) {
-    const { salesorders } = await this.inventoryApi.get('/salesorders/', {
-      params: { customer_id },
-    });
+    const { salesorders } = await this.inventoryApi.get(
+      '/salesorders/',
+      {
+        params: { customer_id },
+      },
+    );
+
     return salesorders;
   }
 
@@ -147,22 +172,175 @@ export class ZohoInventoryService {
     const { salesorder } = await this.inventoryApi.get(
       `/salesorders/${salesorderId}`,
     );
+
     return salesorder;
+  }
+
+  /**
+   * Read-only reconciliation of a payment reference.
+   *
+   * Searches the customer's sales orders across
+   * all reported pages.
+   *
+   * Exact reference matching only.
+   *
+   * Returns a result only when the search is
+   * complete and internally consistent.
+   *
+   * Does not create or modify Zoho records.
+   */
+  async reconcileSalesOrderByReference(
+    customerId: string,
+    referenceNumber: string,
+  ): Promise<{
+    reference_number: string;
+    customer_id: string;
+    status: 'NOT_FOUND' | 'FOUND' | 'DUPLICATE';
+    match_count: number;
+    matches: ZohoSalesOrderSummary[];
+    pages_checked: number;
+    search_complete: true;
+  }> {
+    if (
+      typeof customerId !== 'string' ||
+      !customerId.trim() ||
+      typeof referenceNumber !== 'string' ||
+      !/^EWS-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        referenceNumber,
+      )
+    ) {
+      throw new BadRequestException(
+        'A valid Zoho customer ID and EWS payment reference are required',
+      );
+    }
+
+    const matches: ZohoSalesOrderSummary[] = [];
+    const seenOrderIds = new Set<string>();
+
+    const maxPages = 100;
+    const pageSize = 200;
+    let pagesChecked = 0;
+
+    for (let page = 1; page <= maxPages; page++) {
+      let response: ZohoSalesOrderListResponse;
+
+      try {
+        response =
+          await this.inventoryApi.get<ZohoSalesOrderListResponse>(
+            '/salesorders',
+            {
+              params: {
+                customer_id: customerId,
+                page,
+                per_page: pageSize,
+              },
+            },
+          );
+      } catch {
+        throw new ServiceUnavailableException(
+          'Zoho sales order reconciliation failed. Order creation must remain blocked.',
+        );
+      }
+
+      const context = response?.page_context;
+
+      if (
+        !response ||
+        !Array.isArray(response.salesorders) ||
+        !context ||
+        context.page !== page ||
+        !Number.isInteger(context.per_page) ||
+        context.per_page < 1 ||
+        typeof context.has_more_page !== 'boolean'
+      ) {
+        throw new ServiceUnavailableException(
+          'Zoho returned incomplete pagination information. Reconciliation cannot be trusted.',
+        );
+      }
+
+      pagesChecked++;
+
+      for (const order of response.salesorders) {
+        if (
+          !order ||
+          typeof order.salesorder_id !== 'string' ||
+          !order.salesorder_id ||
+          typeof order.customer_id !== 'string' ||
+          !order.customer_id
+        ) {
+          throw new ServiceUnavailableException(
+            'Zoho returned incomplete sales order information.',
+          );
+        }
+
+        if (seenOrderIds.has(order.salesorder_id)) {
+          throw new ServiceUnavailableException(
+            'Zoho returned repeated sales orders across pages. Reconciliation is incomplete.',
+          );
+        }
+
+        seenOrderIds.add(order.salesorder_id);
+
+        if (order.customer_id !== customerId) {
+          throw new ServiceUnavailableException(
+            'Zoho returned a sales order belonging to another customer.',
+          );
+        }
+
+        if (order.reference_number === referenceNumber) {
+          matches.push(order);
+        }
+      }
+
+      if (!context.has_more_page) {
+        return {
+          reference_number: referenceNumber,
+          customer_id: customerId,
+          status:
+            matches.length === 0
+              ? 'NOT_FOUND'
+              : matches.length === 1
+                ? 'FOUND'
+                : 'DUPLICATE',
+          match_count: matches.length,
+          matches,
+          pages_checked: pagesChecked,
+          search_complete: true,
+        };
+      }
+
+      if (response.salesorders.length === 0) {
+        throw new ServiceUnavailableException(
+          'Zoho reports additional pages but returned no sales orders.',
+        );
+      }
+    }
+
+    throw new ServiceUnavailableException(
+      'Zoho reconciliation exceeded the maximum page limit. Order creation must remain blocked.',
+    );
   }
 
   async createInvoice(data: InvoicePayload) {
     this.assertZohoOrderCreationEnabled();
 
-    const { invoice } = await this.inventoryApi.post('/invoices', data, {
-      headers: { 'Content-Type': 'application/json' },
-      params: { send: true },
-    });
+    const { invoice } = await this.inventoryApi.post(
+      '/invoices',
+      data,
+      {
+        headers: { 'Content-Type': 'application/json' },
+        params: { send: true },
+      },
+    );
 
     return invoice;
   }
 
   async getInvoice(invoiceId: string) {
-    const { invoice } = await this.inventoryApi.get(`/invoices/${invoiceId}`);
+    const { invoice } = await this.inventoryApi.get(
+      `/invoices/${invoiceId}`,
+    );
+
     return invoice;
   }
 
@@ -190,34 +368,40 @@ export class ZohoInventoryService {
   async getInventoryItems(
     searchQuery?: ProductQueryDto,
   ): Promise<ProductEntity[]> {
-    const data = await this.inventoryApi.get<{ items: ProductEntity[] }>(
-      '/items',
-      {
-        params: {
-          per_page: 100,
-          filter_by: 'Status.Active',
-          ...searchQuery,
+    const data =
+      await this.inventoryApi.get<{ items: ProductEntity[] }>(
+        '/items',
+        {
+          params: {
+            per_page: 100,
+            filter_by: 'Status.Active',
+            ...searchQuery,
+          },
         },
-      },
-    );
+      );
 
-    return data.items.filter((item) => item.show_in_storefront === true);
+    return data.items.filter(
+      (item) => item.show_in_storefront === true,
+    );
   }
 
   async getAdminInventoryItems(
     searchQuery?: ProductQueryDto,
   ): Promise<{ products: ProductEntity[] }> {
-    const { items, ...data } = await this.inventoryApi.get<{
-      items: ProductEntity[];
-    }>('/items', {
-      params: {
-        per_page: 100,
-        filter_by: 'Status.Active',
-        ...searchQuery,
-      },
-    });
+    const { items, ...data } =
+      await this.inventoryApi.get<{
+        items: ProductEntity[];
+      }>('/items', {
+        params: {
+          per_page: 100,
+          filter_by: 'Status.Active',
+          ...searchQuery,
+        },
+      });
 
-    const products = items.filter((item) => item.show_in_storefront === true);
+    const products = items.filter(
+      (item) => item.show_in_storefront === true,
+    );
 
     return {
       products,
@@ -226,41 +410,55 @@ export class ZohoInventoryService {
   }
 
   async getAdminInventoryCategories(): Promise<CategoryEntity[]> {
-    const { categories } = await this.commerceApi.get<{
-      categories: CategoryEntity[];
-    }>('/categories', {
-      params: {
-        include_root_category: false,
-      },
-    });
+    const { categories } =
+      await this.commerceApi.get<{
+        categories: CategoryEntity[];
+      }>('/categories', {
+        params: {
+          include_root_category: false,
+        },
+      });
 
-    return categories.filter((item) => item.visibility === true);
+    return categories.filter(
+      (item) => item.visibility === true,
+    );
   }
 
   async getFeaturedInventoryItems(): Promise<ProductEntity[]> {
-    const data = await this.inventoryApi.get<{ items: ProductEntity[] }>(
-      '/items',
-      {
+    const data =
+      await this.inventoryApi.get<{
+        items: ProductEntity[];
+      }>('/items', {
         params: {
           per_page: 1000,
           filter_by: 'Status.Active',
         },
-      },
-    );
+      });
 
     return data.items
-      .filter((item) => item.show_in_storefront === true)
+      .filter(
+        (item) => item.show_in_storefront === true,
+      )
       .slice(0, 8);
   }
 
-  async getInventoryItem(productId: string): Promise<ProductEntity> {
-    const [inventoryData, storeFrontData] = await Promise.all([
-      this.inventoryApi.get<{ item: ProductEntity }>(`/items/${productId}`),
-      this.storeFrontApi.get(`/products/${productId}`),
-    ]);
+  async getInventoryItem(
+    productId: string,
+  ): Promise<ProductEntity> {
+    const [inventoryData, storeFrontData] =
+      await Promise.all([
+        this.inventoryApi.get<{
+          item: ProductEntity;
+        }>(`/items/${productId}`),
+        this.storeFrontApi.get(
+          `/products/${productId}`,
+        ),
+      ]);
 
     const product = inventoryData.item;
-    const shortDesc = storeFrontData?.data.payload?.product?.short_description;
+    const shortDesc =
+      storeFrontData?.data.payload?.product
+        ?.short_description;
 
     if (product && shortDesc) {
       product.description = shortDesc;
@@ -270,13 +468,14 @@ export class ZohoInventoryService {
   }
 
   async getInventoryCategories(): Promise<CategoryEntity[]> {
-    const { categories } = await this.commerceApi.get<{
-      categories: CategoryEntity[];
-    }>('/categories', {
-      params: {
-        include_root_category: false,
-      },
-    });
+    const { categories } =
+      await this.commerceApi.get<{
+        categories: CategoryEntity[];
+      }>('/categories', {
+        params: {
+          include_root_category: false,
+        },
+      });
 
     const activeCategories = categories.filter(
       (category) =>
@@ -286,28 +485,43 @@ export class ZohoInventoryService {
     );
 
     return activeCategories.map((category) => {
-      const match = categoriesData.find((item) => item.slug === category.url);
+      const match = categoriesData.find(
+        (item) => item.slug === category.url,
+      );
 
       return {
         ...category,
         image: match?.image || null,
-        description: match?.summary || category.description || '',
+        description:
+          match?.summary ||
+          category.description ||
+          '',
       };
     });
   }
 
-  async getInventorySubCategories(categoryId: string, hostUrl: string) {
-    const { categories } = await this.inventoryApi.get<{
-      categories: CategoryEntity[];
-    }>('/categories', { params: { filter_by: 'ShowInMenu' } });
+  async getInventorySubCategories(
+    categoryId: string,
+    hostUrl: string,
+  ) {
+    const { categories } =
+      await this.inventoryApi.get<{
+        categories: CategoryEntity[];
+      }>('/categories', {
+        params: {
+          filter_by: 'ShowInMenu',
+        },
+      });
 
     const subCategories = categories.filter(
       (category) =>
-        category.parent_category_id === categoryId && category.visibility,
+        category.parent_category_id === categoryId &&
+        category.visibility,
     );
 
     const parentCategory = categories.find(
-      (category) => category.category_id === categoryId,
+      (category) =>
+        category.category_id === categoryId,
     );
 
     if (!parentCategory) {
@@ -317,51 +531,77 @@ export class ZohoInventoryService {
     }
 
     const extraData = categoriesData.find(
-      (item) => item.slug === parentCategory.url,
+      (item) =>
+        item.slug === parentCategory.url,
     );
 
     return {
       parentCategory: {
         ...parentCategory,
-        image: extraData?.image ? hostUrl + extraData.image : null,
-        description: extraData?.summary ?? parentCategory.description ?? '',
+        image: extraData?.image
+          ? hostUrl + extraData.image
+          : null,
+        description:
+          extraData?.summary ??
+          parentCategory.description ??
+          '',
       },
-      subCategories: subCategories.map((subCat) => {
-        const has_sub_categories = categories.some(
-          (cat) => cat.parent_category_id === subCat.category_id,
-        );
+      subCategories: subCategories.map(
+        (subCat) => {
+          const has_sub_categories =
+            categories.some(
+              (cat) =>
+                cat.parent_category_id ===
+                subCat.category_id,
+            );
 
-        return {
-          ...subCat,
-          has_sub_categories,
-        };
-      }),
+          return {
+            ...subCat,
+            has_sub_categories,
+          };
+        },
+      ),
     };
   }
 
   async getInventoryCategory(categoryId: string) {
-    const { category } = await this.inventoryApi.get<{
-      category: CategoryEntity;
-    }>(`/categories/${categoryId}`);
+    const { category } =
+      await this.inventoryApi.get<{
+        category: CategoryEntity;
+      }>(`/categories/${categoryId}`);
 
-    if (category && Array.isArray(category.children)) {
-      category.children = category.children.filter((child) => child.visibility);
+    if (
+      category &&
+      Array.isArray(category.children)
+    ) {
+      category.children =
+        category.children.filter(
+          (child) => child.visibility,
+        );
     }
 
     return category;
   }
 
-  async getProductsByCategoryId(categoryId?: string, params?: ProductQueryDto) {
-    const { items: products } = await this.inventoryApi.get('/items/', {
-      params: {
-        filter_by: 'Status.Active',
-        ...params,
-        category_id: categoryId,
-      },
-    });
+  async getProductsByCategoryId(
+    categoryId?: string,
+    params?: ProductQueryDto,
+  ) {
+    const { items: products } =
+      await this.inventoryApi.get(
+        '/items/',
+        {
+          params: {
+            filter_by: 'Status.Active',
+            ...params,
+            category_id: categoryId,
+          },
+        },
+      );
 
     return products.filter(
-      (product: ProductEntity) => product.show_in_storefront === true,
+      (product: ProductEntity) =>
+        product.show_in_storefront === true,
     );
   }
 }
